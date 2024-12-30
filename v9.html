@@ -745,6 +745,65 @@
             }
         }
 
+
+
+// Add this function after the processInput function
+
+async function processTextContent(text) {
+    if (!text.trim()) {
+        throw new Error('Content is empty');
+    }
+
+    // Split text into paragraphs
+    const paragraphs = text
+        .split(/\n\n+/)  // Split on multiple newlines
+        .filter(p => p.trim())  // Remove empty paragraphs
+        .map(p => ({ text: p.trim(), tag: 'P' }));  // Convert to content items
+
+    // Clear existing content
+    state.sourceQueue = [];
+    state.targetQueue = [];
+    const sourcePanel = document.getElementById('sourceContent');
+    const targetPanel = document.getElementById('targetContent');
+    sourcePanel.innerHTML = '';
+    targetPanel.innerHTML = '';
+
+    // Process each paragraph
+    for (let i = 0; i < paragraphs.length; i++) {
+        const { text, tag } = paragraphs[i];
+        
+        // Add to source queue and display
+        state.sourceQueue.push({ text, tag });
+        appendContentItem(text, tag, i, 'source');
+
+        try {
+            // Translate paragraph
+            const sourceLang = document.getElementById('sourceLang').value;
+            const targetLang = document.getElementById('targetLang').value;
+            const translatedText = await translate(text, sourceLang, targetLang);
+            
+            if (translatedText) {
+                // Add to target queue and display
+                state.targetQueue.push({ text: translatedText, tag });
+                appendContentItem(translatedText, tag, i, 'target');
+            }
+        } catch (error) {
+            console.error('Translation error:', error);
+            showToast(`Translation failed for paragraph ${i + 1}`, 'error');
+        }
+    }
+
+    state.contentLoaded = true;
+    updateStats();
+}
+
+
+
+
+
+
+
+
         // URL fetching
         async function fetchUrl() {
             const url = document.getElementById('urlField').value.trim();
@@ -1133,55 +1192,6 @@
             showToast('Changes saved and content re-translated', 'success');
         }
 
-// Add this function after the processInput function
-
-async function processTextContent(text) {
-    if (!text.trim()) {
-        throw new Error('Content is empty');
-    }
-
-    // Split text into paragraphs
-    const paragraphs = text
-        .split(/\n\n+/)  // Split on multiple newlines
-        .filter(p => p.trim())  // Remove empty paragraphs
-        .map(p => ({ text: p.trim(), tag: 'P' }));  // Convert to content items
-
-    // Clear existing content
-    state.sourceQueue = [];
-    state.targetQueue = [];
-    const sourcePanel = document.getElementById('sourceContent');
-    const targetPanel = document.getElementById('targetContent');
-    sourcePanel.innerHTML = '';
-    targetPanel.innerHTML = '';
-
-    // Process each paragraph
-    for (let i = 0; i < paragraphs.length; i++) {
-        const { text, tag } = paragraphs[i];
-        
-        // Add to source queue and display
-        state.sourceQueue.push({ text, tag });
-        appendContentItem(text, tag, i, 'source');
-
-        try {
-            // Translate paragraph
-            const sourceLang = document.getElementById('sourceLang').value;
-            const targetLang = document.getElementById('targetLang').value;
-            const translatedText = await translate(text, sourceLang, targetLang);
-            
-            if (translatedText) {
-                // Add to target queue and display
-                state.targetQueue.push({ text: translatedText, tag });
-                appendContentItem(translatedText, tag, i, 'target');
-            }
-        } catch (error) {
-            console.error('Translation error:', error);
-            showToast(`Translation failed for paragraph ${i + 1}`, 'error');
-        }
-    }
-
-    state.contentLoaded = true;
-    updateStats();
-}
 
         
         async function translateEditedContent() {
