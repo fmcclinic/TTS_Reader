@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern TTS Reader with Translation</title>
+    <script src="https://code.responsivevoice.org/responsivevoice.js?key=30xj8le1"></script>
+    <!-- Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- Modern icons -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        :root {
+            /* Color palette */
+            --primary-50: #f0f9ff;
+            --primary-100: #e0f2fe;
+            --primary-200: #bae6fd;
+            --primary-300: #7dd3fc;
+            --primary-400: #38bdf8;
+            --primary-500: #0ea5e9;
+            --primary-600: #0284c7;
+            --primary-700: #0369a1;
+            --primary-800: #075985;
+            --primary-900: #0c4a6e;
+
+            /* Neutral colors */
+            --neutral-50: #f8fafc;
+            --neutral-100: #f1f5f9;
+            --neutral-200: #e2e8f0;
+            --neutral-300: #cbd5e1;
+            --neutral-400: #94a3b8;
+            --neutral-500: #64748b;
+            --neutral-600: #475569;
+            --neutral-700: #334155;
+            --neutral-800: #1e293b;
+            --neutral-900: #0f172a;
+
+            /* Semantic colors */
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+
+            /* Transitions */
+            --transition-fast: 150ms ease-in-out;
+            --transition-normal: 250ms ease-in-out;
+            --transition-slow: 350ms ease-in-out;
+
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        /* Modern scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--neutral-100);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--neutral-300);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--neutral-400);
+        }
+
+        /* Base styles */
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--neutral-50);
+            color: var(--neutral-800);
+            line-height: 1.6;
+        }
+
+        /* Modern card style */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            transition: var(--transition-normal);
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Input styling */
+        input[type="text"],
+        input[type="url"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--neutral-200);
+            border-radius: 8px;
+            background-color: white;
+            transition: var(--transition-fast);
+        }
+
+        input[type="text"]:focus,
+        input[type="url"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary-400);
+            box-shadow: 0 0 0 3px var(--primary-100);
+        }
+
+        /* Modern button styles */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-600);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-700);
+        }
+
+        .btn-secondary {
+            background-color: var(--neutral-100);
+            color: var(--neutral-700);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--neutral-200);
+        }
+
+        /* Modern controls */
+        .player-controls {
+            display: flex;
+            gap: 0.5rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        .control-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--neutral-100);
+            color: var(--neutral-700);
+            transition: var(--transition-fast);
+        }
+
+        .control-btn:hover {
+            background: var(--neutral-200);
+            transform: scale(1.05);
+        }
+
+        .control-btn.active {
+            background: var(--primary-600);
+            color: white;
+        }
+
+        /* Sidebar styling */
+        .sidebar {
+            position: relative;
+        }
+
+        .sticky-controls {
+            position: sticky;
+            top: 1rem;
+            z-index: 10;
+            background: inherit;
+            border-radius: inherit;
+        }
+
+        .sidebar-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+        }
+
+        .sidebar-content.expanded {
+            max-height: 500px; /* Adjust based on content */
+        }
+
+        #sidebarToggle {
+            transition: all 0.3s ease;
+        }
+
+        #sidebarToggle .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+
+        #sidebarToggle.collapsed .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Responsive sidebar */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: white;
+                padding: 1rem;
+                border-radius: 20px 20px 0 0;
+                box-shadow: var(--shadow-lg);
+                z-index: 50;
+            }
+
+            .sticky-controls {
+                position: relative;
+                top: 0;
+            }
+        }
+
+        /* Dark mode */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: var(--neutral-900);
+                color: var(--neutral-100);
+            }
+
+            .card {
+                background: var(--neutral-800);
+            }
+
+            input[type="text"],
+            input[type="url"],
+            textarea,
+            select {
+                background-color: var(--neutral-800);
+                border-color: var(--neutral-700);
+                color: var(--neutral-100);
+            }
+
+            .btn-secondary {
+                background-color: var(--neutral-700);
+                color: var(--neutral-200);
+            }
+
+            .btn-secondary:hover {
+                background-color: var(--neutral-600);
+            }
+
+            .control-btn {
+                background: var(--neutral-700);
+                color: var(--neutral-200);
+            }
+
+            .control-btn:hover {
+                background: var(--neutral-600);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen p-4 md:p-6 lg:p-8">
+        <!-- Main container -->
+        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-6">
+            <!-- Sidebar -->
+            <aside class="sidebar card p-4">
+                <!-- Player controls - luôn hiển thị -->
+                <div class="sticky-controls">
+                    <div class="player-controls mb-2">
+                        <button onclick="startReading()" id="playButton" class="control-btn" aria-label="Play">
+                            <i class="ri-play-fill text-xl"></i>
+                        </button>
+                        <button onclick="pauseReading()" id="pauseButton" class="control-btn" aria-label="Pause">
+                            <i class="ri-pause-fill text-xl"></i>
+                        </button>
+                        <button onclick="resumeReading()" id="resumeButton" class="control-btn" aria-label="Resume">
+                            <i class="ri-play-fill text-xl"></i>
+                        </button>
+                        <button onclick="stopReading()" id="stopButton" class="control-btn" aria-label="Stop">
+                            <i class="ri-stop-fill text-xl"></i>
+                        </button>
+
+                        <!-- Progress bar -->
+                        <div class="flex-1 flex items-center px-4">
+                            <div class="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-2">
+                                <div id="progressBar" class="bg-primary-600 h-2 rounded-full transition-all duration-300"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Arrow indicator -->
+                    <div class="flex justify-center">
+                        <i id="sidebarIndicator" class="ri-arrow-down-s-line text-2xl text-neutral-400"></i>
+                    </div>
+                </div>
+
+                <!-- Collapsible content -->
+                <div id="sidebarContent" class="sidebar-content mt-2">
+                    <!-- Mode selector -->
+                    <div class="mb-4">
+                        <h3 class="text-lg font-semibold mb-2">Input Mode</h3>
+                        <div class="flex gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="mode" value="text" class="accent-primary-600">
+                                <span>Text</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="mode" value="html" class="accent-primary-600">
+                                <span>HTML</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="mode" value="url" checked class="accent-primary-600">
+                                <span>URL</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Voice settings -->
+                    <div class="mb-4">
+                        <h3 class="text-lg font-semibold mb-2">Voice Settings</h3>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="flex justify-between mb-1">
+                                    <span>Speed</span>
+                                    <span id="rateValue">1.0</span>
+                                </label>
+                                <input type="range" id="rate" min="0.5" max="1.5" step="0.1" value="1"
+                                    class="w-full accent-primary-600">
+                            </div>
+                            <div>
+                                <label class="flex justify-between mb-1">
+                                    <span>Pitch</span>
+                                    <span id="pitchValue">1.0</span>
+                                </label>
+                                <input type="range" id="pitch" min="0.5" max="2" step="0.1" value="1"
+                                    class="w-full accent-primary-600">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="p-3 bg-neutral-100 dark:bg-neutral-700 rounded-lg">
+                        <div id="stats" class="text-sm space-y-1">
+                            <!-- Stats content -->
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main content -->
+            <main class="space-y-6">
+                <!-- Input area -->
+                <div class="card p-4">
+                    <!-- Text/HTML input - mặc định ẩn --> 
+                    <div id="textInput" class="hidden space-y-4">
+                        <textarea id="inputText" rows="6" placeholder="Enter your text or HTML here..."
+                            class="w-full resize-y"></textarea>
+                        <button onclick="processInput()" class="btn btn-primary">
+                            <i class="ri-play-circle-line"></i>
+                            Process Content
+                        </button>
+                    </div>
+
+                    <!-- URL input - mặc định hiển thị -->
+                    <div id="urlInput" class="space-y-4">
+                        <div class="flex gap-4">
+                            <input type="url" id="urlField" placeholder="Enter URL (e.g., https://example.com)">
+                            <button onclick="fetchUrl()" class="btn btn-primary">
+                                <i class="ri-download-cloud-line"></i>
+                                Fetch
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content panels -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Source panel -->
+                    <div class="card">
+                        <div class="border-b border-neutral-200 dark:border-neutral-700">
+                            <!-- Header with language selector and edit controls -->
+                            <div class="flex items-center justify-between p-4">
+                                <h2 class="text-lg font-semibold">Original Text</h2>
+                                <div class="flex items-center gap-4">
+                                    <select id="sourceLang" class="w-40" onchange="updateVoiceOptions('source')">
+                                        <option value="vi">Tiếng Việt</option>
+                                        <option value="en">English</option>
+                                    </select>
+                                    <select id="sourceVoice" class="w-40"></select>
+                                    <button onclick="toggleEdit('source')" class="btn btn-secondary" id="editButton">
+                                        <i class="ri-edit-line"></i>
+                                        Edit
+                                    </button>
+                                    <button onclick="saveEdit('source')" class="btn btn-primary hidden" id="saveButton">
+                                        <i class="ri-save-line"></i>
+                                        Save
+                                    </button>
+                                    <button onclick="toggleReading('source')" class="btn btn-secondary">
+                                        <i class="ri-volume-up-line"></i>
+                                        Read Source
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="sourceContent" class="p-4 h-[600px] overflow-y-auto"></div>
+                    </div>
+
+                    <!-- Target panel -->
+                    <div class="card">
+                        <div class="border-b border-neutral-200 dark:border-neutral-700">
+                            <!-- Header with language selector -->
+                            <div class="flex items-center justify-between p-4">
+                                <h2 class="text-lg font-semibold">Translation</h2>
+                                <div class="flex items-center gap-4">
+                                    <select id="targetLang" class="w-40" onchange="updateVoiceOptions('target')">
+                                        <option value="en">English</option>
+                                        <option value="vi">Tiếng Việt</option>
+                                    </select>
+                                    <select id="targetVoice" class="w-40"></select>
+                                    <button onclick="toggleReading('target')" class="btn btn-secondary">
+                                        <i class="ri-volume-up-line"></i>
+                                        Read Translation
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="targetContent" class="p-4 h-[600px] overflow-y-auto"></div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Status toast -->
+    <div id="status" class="fixed bottom-4 right-4 p-4 rounded-lg shadow-lg transition-all duration-300 opacity-0"></div>
+
+    <!-- Loading overlay -->
+    <div id="loading" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden">
+        <div class="bg-white dark:bg-neutral-800 p-6 rounded-lg shadow-xl flex items-center gap-4">
+            <div class="animate-spin w-6 h-6 border-4 border-primary-600 border-t-transparent rounded-full"></div>
+            <span class="text-lg">Processing...</span>
+        </div>
+    </div>
+
+    <!-- Modern content styling -->
+    <style>
+        /* Content item styling */
+        .content-item {
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-radius: 0.5rem;
+            border-left: 4px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .content-item:hover {
+            background-color: var(--neutral-100);
+        }
+
+        /* Light mode active state */
+        .content-item.active {
+            background-color: var(--primary-600);
+            border-left-color: var(--primary-800);
+            color: white;
+        }
+
+        /* Edit mode styles - không thay đổi background */
+        .editing .content-item {
+            border-left: 4px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .editing .content-item.active {
+            background-color: var(--primary-800);
+            border-left-color: var(--primary-400);
+            color: white;
+        }
+
+        /* Dark mode styles */
+        @media (prefers-color-scheme: dark) {
+            .content-item:hover {
+                background-color: var(--neutral-700);
+            }
+
+            .content-item.active {
+                background-color: var(--primary-800);
+                border-left-color: var(--primary-400);
+                color: white;
+            }
+
+            /* Dark mode edit styles */
+            .editing .content-item {
+                background-color: transparent;
+            }
+
+            .editing .content-item:hover {
+                background-color: var(--neutral-700);
+            }
+
+            .editing .content-item.active {
+                background-color: var(--primary-900);
+                border-left-color: var(--primary-400);
+                color: white;
+            }
+        }
+
+        /* Header hierarchy styling */
+        .content-item[data-tag^="H"] {
+            font-weight: 600;
+        }
+
+        .content-item[data-tag="H1"] {
+            font-size: 1.5rem;
+            margin-left: 0;
+        }
+
+        .content-item[data-tag="H2"] {
+            font-size: 1.25rem;
+            margin-left: 1rem;
+        }
+
+        .content-item[data-tag="H3"] {
+            font-size: 1.1rem;
+            margin-left: 2rem;
+        }
+
+        .content-item[data-tag="H4"] {
+            font-size: 1rem;
+            margin-left: 3rem;
+        }
+
+        .content-item[data-tag="H5"] {
+            font-size: 0.9rem;
+            margin-left: 4rem;
+        }
+
+        .content-item[data-tag="H6"] {
+            font-size: 0.8rem;
+            margin-left: 5rem;
+        }
+    </style>
+
+    <script>
+        // State management
+        const state = {
+            currentMode: 'url',  // Mặc định là URL mode
+            sourceQueue: [],
+            targetQueue: [],
+            currentIndex: -1,
+            isReading: false,
+            isPaused: false,
+            currentLanguage: 'source',
+            contentLoaded: false
+        };
+
+        // Document ready handler
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize voice options
+            updateVoiceOptions('source');
+            updateVoiceOptions('target');
+            updateStats();
+            showToast('Ready to use!', 'info');
+
+            // Sidebar scroll handling
+            const sidebarContent = document.getElementById('sidebarContent');
+            const sidebarIndicator = document.getElementById('sidebarIndicator');
+            let lastScrollTop = 0;
+            let scrollTimeout;
+
+            window.addEventListener('scroll', () => {
+                const st = window.pageYOffset || document.documentElement.scrollTop;
+                
+                // Clear existing timeout
+                clearTimeout(scrollTimeout);
+                
+                if (st > lastScrollTop && st > 100) {
+                    // Scrolling down - hide settings
+                    sidebarContent.classList.remove('expanded');
+                    sidebarIndicator.style.transform = 'rotate(0deg)';
+                } else if (st < lastScrollTop && st < (document.documentElement.scrollHeight - window.innerHeight - 100)) {
+                    // Scrolling up - show settings
+                    sidebarContent.classList.add('expanded');
+                    sidebarIndicator.style.transform = 'rotate(180deg)';
+                }
+                
+                lastScrollTop = st <= 0 ? 0 : st;
+
+                // Add smooth transition when stopping scroll
+                scrollTimeout = setTimeout(() => {
+                    sidebarIndicator.style.transition = 'transform 0.3s ease';
+                }, 150);
+            }, false);
+
+            // Handle indicator click
+            sidebarIndicator.addEventListener('click', () => {
+                sidebarContent.classList.toggle('expanded');
+                sidebarIndicator.style.transform = sidebarContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
+            });
+
+            // Show initially
+            sidebarContent.classList.add('expanded');
+            sidebarIndicator.style.transform = 'rotate(180deg)';
+
+            // Rest of the initialization code...
+
+            // Rest of the initialization code...
+
+            // Initialize URL mode
+            const urlInput = document.getElementById('urlInput');
+            const textInput = document.getElementById('textInput');
+            urlInput.style.display = 'block';
+            textInput.style.display = 'none';
+
+            // Range input listeners
+            document.getElementById('rate').addEventListener('input', function() {
+                document.getElementById('rateValue').textContent = this.value;
+            });
+            
+            document.getElementById('pitch').addEventListener('input', function() {
+                document.getElementById('pitchValue').textContent = this.value;
+            });
+
+            // Mode radio buttons
+            document.querySelectorAll('input[name="mode"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    switchMode(this.value);
+                });
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function(event) {
+                if (event.target.tagName === 'TEXTAREA' || event.target.tagName === 'INPUT') {
+                    return;
+                }
+
+                switch(event.code) {
+                    case 'Space':
+                        event.preventDefault();
+                        if (state.isReading) {
+                            if (state.isPaused) {
+                                resumeReading();
+                            } else {
+                                pauseReading();
+                            }
+                        } else {
+                            startReading();
+                        }
+                        break;
+                    case 'Escape':
+                        stopReading();
+                        break;
+                }
+            });
+
+            // Mobile sidebar handling
+            const sidebar = document.querySelector('.sidebar');
+            const sidebarHandle = document.querySelector('.sidebar-handle');
+
+            if (sidebarHandle) {
+                sidebarHandle.addEventListener('click', () => {
+                    sidebar.classList.toggle('expanded');
+                });
+
+                // Close sidebar when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!sidebar.contains(e.target) && sidebar.classList.contains('expanded')) {
+                        sidebar.classList.remove('expanded');
+                    }
+                });
+            }
+
+            // Sync scroll between panels
+            const sourcePanel = document.getElementById('sourceContent');
+            const targetPanel = document.getElementById('targetContent');
+
+            sourcePanel.addEventListener('scroll', () => {
+                targetPanel.scrollTop = sourcePanel.scrollTop;
+            });
+
+            targetPanel.addEventListener('scroll', () => {
+                sourcePanel.scrollTop = targetPanel.scrollTop;
+            });
+        });
+
+        // Voice handling
+        function updateVoiceOptions(type) {
+            const lang = document.getElementById(type + 'Lang').value;
+            const voiceSelect = document.getElementById(type + 'Voice');
+            
+            const voices = {
+                vi: [
+                    { value: "Vietnamese Male", label: "Giọng Nam (Mặc định)", default: true },
+                    { value: "Vietnamese Female", label: "Giọng Nữ" }
+                ],
+                en: [
+                    { value: "UK English Male", label: "UK Male (Default)", default: true },
+                    { value: "UK English Female", label: "UK Female" },
+                    { value: "US English Male", label: "US Male" },
+                    { value: "US English Female", label: "US Female" }
+                ]
+            };
+
+            voiceSelect.innerHTML = voices[lang]
+                .map(voice => `<option value="${voice.value}" ${voice.default ? 'selected' : ''}>${voice.label}</option>`)
+                .join('');
+        }
+
+        // Content processing functions
+        async function processInput() {
+            const input = document.getElementById('inputText').value.trim();
+            if (!input) {
+                showToast('Please enter some content', 'error');
+                return;
+            }
+
+            showLoading(true);
+            try {
+                if (state.currentMode === 'text') {
+                    await processTextContent(input);
+                } else {
+                    await parseContent(input);
+                }
+                
+                state.contentLoaded = true;
+                updateStats();
+                showToast('Content processed successfully', 'success');
+            } catch (error) {
+                console.error('Processing error:', error);
+                showToast(error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // URL fetching
+        async function fetchUrl() {
+            const url = document.getElementById('urlField').value.trim();
+            if (!url) {
+                showToast('Please enter a valid URL', 'error');
+                return;
+            }
+
+            showLoading(true);
+            try {
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+                const response = await fetch(proxyUrl);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch content');
+                }
+
+                const html = await response.text();
+                await parseContent(html);
+                showToast('Content fetched successfully', 'success');
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Content parsing
+        async function parseContent(content) {
+            if (!content.trim()) {
+                showToast('Content is empty', 'error');
+                return;
+            }
+
+            showLoading(true);
+            try {
+                state.sourceQueue = [];
+                state.targetQueue = [];
+                state.contentLoaded = false;
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(content, 'text/html');
+                const sourcePanel = document.getElementById('sourceContent');
+                const targetPanel = document.getElementById('targetContent');
+
+                sourcePanel.innerHTML = '';
+                targetPanel.innerHTML = '';
+
+                doc.querySelectorAll('sup').forEach(sup => sup.remove());
+                const elements = doc.querySelectorAll('h1, h2, h3, h4, h5, h6, p');
+
+                for (const el of elements) {
+                    const text = el.textContent.trim();
+                    if (!text) continue;
+
+                    const sourceItem = { text, tag: el.tagName };
+                    state.sourceQueue.push(sourceItem);
+                    appendContentItem(text, el.tagName, state.sourceQueue.length - 1, 'source');
+
+                    try {
+                        const sourceLang = document.getElementById('sourceLang').value;
+                        const targetLang = document.getElementById('targetLang').value;
+                        const translatedText = await translate(text, sourceLang, targetLang);
+                        
+                        if (translatedText) {
+                            const targetItem = { text: translatedText, tag: el.tagName };
+                            state.targetQueue.push(targetItem);
+                            appendContentItem(translatedText, el.tagName, state.targetQueue.length - 1, 'target');
+                        }
+                    } catch (error) {
+                        console.error('Translation error:', error);
+                        showToast(`Translation failed for section ${state.sourceQueue.length}`, 'error');
+                    }
+                }
+
+                state.contentLoaded = true;
+                updateStats();
+                showToast('Content parsed successfully', 'success');
+            } catch (error) {
+                console.error('Parsing error:', error);
+                showToast('Error parsing content: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Translation function
+        async function translate(text, source, target) {
+            try {
+                const CHUNK_SIZE = 1000;
+                const chunks = text.match(new RegExp(`.{1,${CHUNK_SIZE}}`, 'g')) || [];
+                
+                let translatedText = '';
+                for (const chunk of chunks) {
+                    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${source}&tl=${target}&dt=t&q=${encodeURIComponent(chunk)}`;
+                    const response = await fetch(url);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    translatedText += data[0].map(x => x[0]).join('');
+                    await new Promise(resolve => setTimeout(resolve, 300)); // Rate limiting
+                }
+                
+                return translatedText;
+            } catch (error) {
+                console.error('Translation error:', error);
+                throw new Error('Translation failed. Please try again.');
+            }
+        }
+
+        // Mode switching
+        function switchMode(mode) {
+            state.currentMode = mode;
+            const urlInput = document.getElementById('urlInput');
+            const textInput = document.getElementById('textInput');
+            
+            urlInput.style.display = mode === 'url' ? 'block' : 'none';
+            textInput.style.display = mode === 'url' ? 'none' : 'block';
+            
+            stopReading();
+            state.contentLoaded = false;
+            clearContent();
+            updateStats();
+        }
+
+        // Reading control functions
+        function startReading() {
+            const queue = state.currentLanguage === 'source' ? state.sourceQueue : state.targetQueue;
+            if (!state.contentLoaded || queue.length === 0) {
+                showToast('No content to read', 'error');
+                return;
+            }
+
+            if (state.currentIndex === -1) {
+                state.currentIndex = 0;
+            }
+
+            state.isReading = true;
+            state.isPaused = false;
+            readNext();
+            updateProgress();
+            updatePlaybackControls();
+        }
+
+        function pauseReading() {
+            if (state.isReading) {
+                state.isPaused = true;
+                state.isReading = false;
+                responsiveVoice.pause();
+                showToast('Paused', 'info');
+                updatePlaybackControls();
+            }
+        }
+
+        function resumeReading() {
+            if (state.isPaused) {
+                state.isReading = true;
+                state.isPaused = false;
+                responsiveVoice.resume();
+                showToast('Resuming...', 'info');
+                updatePlaybackControls();
+            }
+        }
+
+        function stopReading() {
+            state.isReading = false;
+            state.isPaused = false;
+            state.currentIndex = -1;
+            responsiveVoice.cancel();
+            highlightCurrentItem();
+            updateStats();
+            updateProgress();
+            updatePlaybackControls();
+            showToast('Stopped', 'info');
+        }
+
+        function readNext() {
+            const queue = state.currentLanguage === 'source' ? state.sourceQueue : state.targetQueue;
+            if (!state.isReading || state.currentIndex >= queue.length) {
+                stopReading();
+                return;
+            }
+
+            const item = queue[state.currentIndex];
+            const voice = document.getElementById(
+                state.currentLanguage === 'source' ? 'sourceVoice' : 'targetVoice'
+            ).value;
+            const rate = document.getElementById('rate').value;
+            const pitch = document.getElementById('pitch').value;
+
+            highlightCurrentItem();
+            updateStats();
+            updateProgress();
+
+            responsiveVoice.speak(item.text, voice, {
+                rate: parseFloat(rate),
+                pitch: parseFloat(pitch),
+                onstart: () => {
+                    showToast(
+                        `Reading ${state.currentLanguage} section ${state.currentIndex + 1} of ${queue.length}`, 
+                        'info'
+                    );
+                },
+                onend: () => {
+                    if (state.isReading && !state.isPaused) {
+                        state.currentIndex++;
+                        readNext();
+                    }
+                }
+            });
+        }
+
+        function toggleReading(type) {
+            if (state.isReading && state.currentLanguage === type) {
+                stopReading();
+            } else {
+                state.currentLanguage = type;
+                state.currentIndex = 0;
+                startReading();
+            }
+        }
+
+        // UI update functions
+        function updatePlaybackControls() {
+            const playButton = document.getElementById('playButton');
+            const pauseButton = document.getElementById('pauseButton');
+            const resumeButton = document.getElementById('resumeButton');
+            const stopButton = document.getElementById('stopButton');
+
+            playButton.disabled = state.isReading;
+            pauseButton.disabled = !state.isReading || state.isPaused;
+            resumeButton.disabled = !state.isPaused;
+            stopButton.disabled = !state.isReading && !state.isPaused;
+
+            [playButton, pauseButton, resumeButton, stopButton].forEach(btn => {
+                btn.classList.toggle('active', !btn.disabled);
+            });
+        }
+
+        function updateProgress() {
+            const queue = state.currentLanguage === 'source' ? state.sourceQueue : state.targetQueue;
+            const progress = ((state.currentIndex + 1) / queue.length) * 100;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+        }
+
+        function updateStats() {
+            const stats = document.getElementById('stats');
+            const totalSections = state.sourceQueue.length;
+            const totalWords = state.sourceQueue.reduce(
+                (acc, item) => acc + item.text.split(/\s+/).length,
+                0
+            );
+            const estimatedTime = Math.ceil(totalWords * 0.3);
+
+            stats.innerHTML = `
+                <div class="flex justify-between">
+                    <span>Sections:</span>
+                    <span class="font-medium">${totalSections}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Words:</span>
+                    <span class="font-medium">${totalWords}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Est. Time:</span>
+                    <span class="font-medium">${estimatedTime}s</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Current:</span>
+                    <span class="font-medium">${state.currentIndex + 1}/${totalSections}</span>
+                </div>
+            `;
+        }
+
+        function highlightCurrentItem() {
+            document.querySelectorAll('.content-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            const currentItems = document.querySelectorAll(
+                `.content-item[data-index="${state.currentIndex}"]`
+            );
+            currentItems.forEach(item => {
+                item.classList.add('active');
+                item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+        }
+
+        function showToast(message, type = 'info') {
+            const status = document.getElementById('status');
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                info: 'bg-blue-500'
+            };
+
+            status.className = `fixed bottom-4 right-4 p-4 rounded-lg shadow-lg text-white ${colors[type]} transition-all duration-300`;
+            status.textContent = message;
+            status.style.opacity = '1';
+
+            if (type !== 'error') {
+                setTimeout(() => {
+                    status.style.opacity = '0';
+                }, 3000);
+            }
+        }
+
+        function showLoading(show = true) {
+            document.getElementById('loading').style.display = show ? 'flex' : 'none';
+        }
+
+        function clearContent() {
+            state.sourceQueue = [];
+            state.targetQueue = [];
+            document.getElementById('sourceContent').innerHTML = '';
+            document.getElementById('targetContent').innerHTML = '';
+        }
+
+        function appendContentItem(text, tag, index, type) {
+            const container = document.getElementById(`${type}Content`);
+            const div = document.createElement('div');
+            div.className = 'content-item';
+            div.dataset.tag = tag;
+            div.dataset.index = index;
+            div.textContent = text;
+            div.onclick = () => startReadingFrom(index, type);
+            container.appendChild(div);
+        }
+
+        function startReadingFrom(index, language) {
+            if (!state.contentLoaded) return;
+            state.currentLanguage = language;
+            state.currentIndex = index;
+            startReading();
+        }
+
+        // Edit functionality
+        function toggleEdit(type) {
+            const content = document.getElementById(`${type}Content`);
+            const editButton = document.getElementById('editButton');
+            const saveButton = document.getElementById('saveButton');
+            
+            // Make content editable
+            content.contentEditable = true;
+            content.focus();
+            
+            // Add editing styles mà không thay đổi background
+            content.classList.add('editing');
+            content.style.padding = '1rem';
+            content.style.border = '2px solid var(--primary-400)';
+            
+            // Toggle buttons
+            editButton.classList.add('hidden');
+            saveButton.classList.remove('hidden');
+        }
+        
+        function saveEdit(type) {
+            const content = document.getElementById(`${type}Content`);
+            const editButton = document.getElementById('editButton');
+            const saveButton = document.getElementById('saveButton');
+            
+            // Disable editing
+            content.contentEditable = false;
+            
+            // Remove editing styles
+            content.classList.remove('editing');
+            content.style.padding = '';
+            content.style.border = '';
+            
+            // Toggle buttons
+            editButton.classList.remove('hidden');
+            saveButton.classList.add('hidden');
+            
+            // Update sourceQueue with new content
+            const sections = content.getElementsByClassName('content-item');
+            Array.from(sections).forEach((section, index) => {
+                state.sourceQueue[index].text = section.textContent;
+            });
+            
+            // Re-translate edited content
+            translateEditedContent();
+            
+            showToast('Changes saved and content re-translated', 'success');
+        }
+        
+        async function translateEditedContent() {
+            const sourceLang = document.getElementById('sourceLang').value;
+            const targetLang = document.getElementById('targetLang').value;
+            const targetContent = document.getElementById('targetContent');
+            const sourceContent = document.getElementById('sourceContent');
+            
+            // Clear target queues
+            state.targetQueue = [];
+            targetContent.innerHTML = '';
+            
+            // Update source queue based on current content
+            state.sourceQueue = [];
+            const sections = sourceContent.getElementsByClassName('content-item');
+            Array.from(sections).forEach((section) => {
+                if (section.textContent.trim()) {  // Chỉ thêm vào queue nếu có nội dung
+                    state.sourceQueue.push({
+                        text: section.textContent,
+                        tag: section.dataset.tag
+                    });
+                }
+            });
+            
+            // Translate remaining sections
+            for (let i = 0; i < state.sourceQueue.length; i++) {
+                const item = state.sourceQueue[i];
+                try {
+                    const translatedText = await translate(item.text, sourceLang, targetLang);
+                    if (translatedText) {
+                        const targetItem = { text: translatedText, tag: item.tag };
+                        state.targetQueue.push(targetItem);
+                        appendContentItem(translatedText, item.tag, i, 'target');
+                    }
+                } catch (error) {
+                    console.error('Translation error:', error);
+                    showToast(`Translation failed for section ${i + 1}`, 'error');
+                }
+            }
+            
+            updateStats();
+        }
+    </script>
+</body>
+</html>
