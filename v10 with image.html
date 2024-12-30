@@ -1,4 +1,46 @@
-<!DOCTYPE html>
+// Process text input
+        async function processTextContent(input) {
+            try {
+                const paragraphs = input.split(/\n\s*\n/);
+                clearContent();
+                
+                for (let i = 0; i < paragraphs.length; i++) {
+                    const text = paragraphs[i].trim();
+                    if (!text) continue;
+
+                    // Add to source
+                    const sourceItem = {
+                        type: 'text',
+                        tag: 'P',
+                        text: text
+                    };
+                    state.sourceQueue.push(sourceItem);
+                    appendContentItem(sourceItem, i, 'source');
+
+                    // Translate and add to target
+                    const sourceLang = document.getElementById('sourceLang').value;
+                    const targetLang = document.getElementById('targetLang').value;
+                    
+                    try {
+                        const translatedText = await translate(text, sourceLang, targetLang);
+                        if (translatedText) {
+                            const targetItem = {
+                                type: 'text',
+                                tag: 'P',
+                                text: translatedText
+                            };
+                            state.targetQueue.push(targetItem);
+                            appendContentItem(targetItem, i, 'target');
+                        }
+                    } catch (error) {
+                        console.error('Translation error:', error);
+                        showToast(`Translation failed for paragraph ${i + 1}`, 'error');
+                    }
+                }
+            } catch (error) {
+                throw new Error('Error processing text: ' + error.message);
+            }
+        }<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -730,7 +772,7 @@
             try {
                 if (state.currentMode === 'text') {
                     await processTextContent(input);
-                } else {
+                } else if (state.currentMode === 'html') {
                     await parseContent(input);
                 }
                 
@@ -793,26 +835,64 @@
                 sourcePanel.innerHTML = '';
                 targetPanel.innerHTML = '';
 
+                // Remove reference numbers but keep images
                 doc.querySelectorAll('sup').forEach(sup => sup.remove());
-                const elements = doc.querySelectorAll('h1, h2, h3, h4, h5, h6, p');
+                
+                // Get main content elements including images
+                const elements = doc.querySelectorAll('h1, h2, h3, h4, h5, h6, p, img');
 
                 for (const el of elements) {
-                    const text = el.textContent.trim();
-                    if (!text) continue;
+                    let sourceItem;
+                    
+                    if (el.tagName.toLowerCase() === 'img') {
+                        // Handle image elements
+                        sourceItem = {
+                            type: 'image',
+                            tag: 'IMG',
+                            src: el.src,
+                            alt: el.alt || '',
+                            text: el.alt || 'Image' // Use alt text for translation
+                        };
+                    } else {
+                        // Handle text elements
+                        const text = el.textContent.trim();
+                        if (!text) continue;
+                        
+                        sourceItem = {
+                            type: 'text',
+                            tag: el.tagName,
+                            text: text
+                        };
+                    }
 
-                    const sourceItem = { text, tag: el.tagName };
                     state.sourceQueue.push(sourceItem);
-                    appendContentItem(text, el.tagName, state.sourceQueue.length - 1, 'source');
+                    appendContentItem(sourceItem, state.sourceQueue.length - 1, 'source');
 
                     try {
                         const sourceLang = document.getElementById('sourceLang').value;
                         const targetLang = document.getElementById('targetLang').value;
-                        const translatedText = await translate(text, sourceLang, targetLang);
                         
-                        if (translatedText) {
-                            const targetItem = { text: translatedText, tag: el.tagName };
+                        // Only translate text, not images
+                        if (sourceItem.type === 'text') {
+                            const translatedText = await translate(sourceItem.text, sourceLang, targetLang);
+                            if (translatedText) {
+                                const targetItem = { 
+                                    type: 'text',
+                                    tag: sourceItem.tag, 
+                                    text: translatedText 
+                                };
+                                state.targetQueue.push(targetItem);
+                                appendContentItem(targetItem, state.targetQueue.length - 1, 'target');
+                            }
+                        } else if (sourceItem.type === 'image') {
+                            // Copy image to target panel with translated alt text if available
+                            const translatedAlt = await translate(sourceItem.text, sourceLang, targetLang);
+                            const targetItem = {
+                                ...sourceItem,
+                                text: translatedAlt || sourceItem.text
+                            };
                             state.targetQueue.push(targetItem);
-                            appendContentItem(translatedText, el.tagName, state.targetQueue.length - 1, 'target');
+                            appendContentItem(targetItem, state.targetQueue.length - 1, 'target');
                         }
                     } catch (error) {
                         console.error('Translation error:', error);
@@ -1066,13 +1146,24 @@
             document.getElementById('targetContent').innerHTML = '';
         }
 
-        function appendContentItem(text, tag, index, type) {
+        function appendContentItem(item, index, type) {
             const container = document.getElementById(`${type}Content`);
             const div = document.createElement('div');
             div.className = 'content-item';
-            div.dataset.tag = tag;
+            div.dataset.tag = item.tag;
             div.dataset.index = index;
-            div.textContent = text;
+
+            if (item.type === 'image') {
+                // Create image element
+                const img = document.createElement('img');
+                img.src = item.src;
+                img.alt = item.text;
+                img.className = 'max-w-full h-auto';
+                div.appendChild(img);
+            } else {
+                div.textContent = item.text;
+            }
+
             div.onclick = () => startReadingFrom(index, type);
             container.appendChild(div);
         }
@@ -1132,57 +1223,6 @@
             
             showToast('Changes saved and content re-translated', 'success');
         }
-
-// Add this function after the processInput function
-
-async function processTextContent(text) {
-    if (!text.trim()) {
-        throw new Error('Content is empty');
-    }
-
-    // Split text into paragraphs
-    const paragraphs = text
-        .split(/\n\n+/)  // Split on multiple newlines
-        .filter(p => p.trim())  // Remove empty paragraphs
-        .map(p => ({ text: p.trim(), tag: 'P' }));  // Convert to content items
-
-    // Clear existing content
-    state.sourceQueue = [];
-    state.targetQueue = [];
-    const sourcePanel = document.getElementById('sourceContent');
-    const targetPanel = document.getElementById('targetContent');
-    sourcePanel.innerHTML = '';
-    targetPanel.innerHTML = '';
-
-    // Process each paragraph
-    for (let i = 0; i < paragraphs.length; i++) {
-        const { text, tag } = paragraphs[i];
-        
-        // Add to source queue and display
-        state.sourceQueue.push({ text, tag });
-        appendContentItem(text, tag, i, 'source');
-
-        try {
-            // Translate paragraph
-            const sourceLang = document.getElementById('sourceLang').value;
-            const targetLang = document.getElementById('targetLang').value;
-            const translatedText = await translate(text, sourceLang, targetLang);
-            
-            if (translatedText) {
-                // Add to target queue and display
-                state.targetQueue.push({ text: translatedText, tag });
-                appendContentItem(translatedText, tag, i, 'target');
-            }
-        } catch (error) {
-            console.error('Translation error:', error);
-            showToast(`Translation failed for paragraph ${i + 1}`, 'error');
-        }
-    }
-
-    state.contentLoaded = true;
-    updateStats();
-}
-
         
         async function translateEditedContent() {
             const sourceLang = document.getElementById('sourceLang').value;
