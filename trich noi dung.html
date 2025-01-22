@@ -19,6 +19,15 @@
         <textarea id="output" rows="20" cols="80" readonly></textarea>
         <br>
         <button onclick="saveAsText()">Lưu thành file text</button>
+        <button onclick="addToCollection()">Thêm vào tổng hợp</button>
+    </div>
+
+    <div>
+        <h3>Tổng hợp nội dung:</h3>
+        <textarea id="collection" rows="20" cols="80" readonly></textarea>
+        <br>
+        <button onclick="saveCollection()">Lưu tổng hợp</button>
+        <button onclick="clearCollection()">Xóa tổng hợp</button>
     </div>
 
     <script>
@@ -98,15 +107,40 @@
         
         function saveAsText() {
             const content = document.getElementById('output').value;
+            saveTextAsFile(content, 'noidung.txt');
+        }
+
+        function addToCollection() {
+            const content = document.getElementById('output').value;
+            if (!content) return;
+
+            const collection = document.getElementById('collection');
+            if (collection.value) {
+                collection.value += '\n\n==========\n\n';
+            }
+            collection.value += content;
+            alert('Đã thêm vào tổng hợp!');
+        }
+
+        function saveCollection() {
+            const content = document.getElementById('collection').value;
+            saveTextAsFile(content, 'tonghop.txt');
+        }
+
+        function clearCollection() {
+            if (confirm('Bạn có chắc muốn xóa toàn bộ nội dung tổng hợp?')) {
+                document.getElementById('collection').value = '';
+            }
+        }
+
+        function saveTextAsFile(content, filename) {
             const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'noidung.txt';
-            
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
-            
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
         }
