@@ -67,6 +67,25 @@
             font-size: 16px;
             border-radius: 4px;
         }
+        .progress {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e3f2fd;
+            border-radius: 4px;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
         .status {
             margin-top: 10px;
             padding: 10px;
@@ -88,16 +107,10 @@
             padding: 15px;
             background-color: #e3f2fd;
             border-radius: 4px;
-            display: flex;
-            justify-content: space-between;
         }
-        .info-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .info-label {
-            font-weight: bold;
+        .queue-info {
+            margin-top: 10px;
+            font-size: 14px;
             color: #1976d2;
         }
     </style>
@@ -136,6 +149,16 @@
                     <option value="2">Cao</option>
                 </select>
             </div>
+            <div class="setting-group">
+                <label for="chunk-size">Độ dài đoạn:</label>
+                <select id="chunk-size">
+                    <option value="100">100 ký tự</option>
+                    <option value="200">200 ký tự</option>
+                    <option value="300" selected>300 ký tự</option>
+                    <option value="400">400 ký tự</option>
+                    <option value="500">500 ký tự</option>
+                </select>
+            </div>
         </div>
 
         <div class="controls">
@@ -145,20 +168,105 @@
         </div>
 
         <div id="status" class="status"></div>
-        
-        <div class="info-panel">
-            <div class="info-item">
-                <span class="info-label">Số ký tự:</span>
-                <span id="char-count">0</span>
+
+        <div class="progress">
+            <div class="queue-info">
+                Đang đọc: <span id="current-chunk">0</span>/<span id="total-chunks">0</span> đoạn
             </div>
-            <div class="info-item">
-                <span class="info-label">Requests hôm nay:</span>
-                <span id="request-count">0/5000</span>
+            <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill"></div>
             </div>
         </div>
     </div>
 
     <script>
+        class TextQueue {
+            constructor() {
+                this.chunks = [];
+                this.currentIndex = 0;
+                this.isPaused = false;
+                this.isStopped = true;
+            }
+
+            reset() {
+                this.chunks = [];
+                this.currentIndex = 0;
+                this.isPaused = false;
+                this.isStopped = true;
+            }
+
+            splitText(text, chunkSize) {
+                // Chia văn bản thành các đoạn nhỏ theo dấu câu
+                const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+                let currentChunk = '';
+                
+                for (let sentence of sentences) {
+                    sentence = sentence.trim();
+                    
+                    if (currentChunk.length + sentence.length <= chunkSize) {
+                        currentChunk += (currentChunk ? ' ' : '') + sentence;
+                    } else {
+                        if (currentChunk) this.chunks.push(currentChunk);
+                        currentChunk = sentence;
+                    }
+                }
+                
+                if (currentChunk) this.chunks.push(currentChunk);
+                
+                return this.chunks;
+            }
+
+            start(onChunkStart, onChunkEnd, onComplete) {
+                if (this.chunks.length === 0) return;
+                
+                this.isPaused = false;
+                this.isStopped = false;
+
+                const speakChunk = () => {
+                    if (this.isStopped) return;
+                    if (this.isPaused) return;
+                    if (this.currentIndex >= this.chunks.length) {
+                        onComplete();
+                        return;
+                    }
+
+                    const chunk = this.chunks[this.currentIndex];
+                    onChunkStart(this.currentIndex);
+
+                    responsiveVoice.speak(chunk, voiceSelect.value, {
+                        rate: parseFloat(speedSelect.value),
+                        pitch: parseFloat(pitchSelect.value),
+                        onend: () => {
+                            if (!this.isStopped) {
+                                onChunkEnd(this.currentIndex);
+                                this.currentIndex++;
+                                speakChunk();
+                            }
+                        }
+                    });
+                };
+
+                speakChunk();
+            }
+
+            pause() {
+                this.isPaused = true;
+                responsiveVoice.pause();
+            }
+
+            resume() {
+                this.isPaused = false;
+                responsiveVoice.resume();
+            }
+
+            stop() {
+                this.isStopped = true;
+                this.currentIndex = 0;
+                responsiveVoice.cancel();
+            }
+        }
+
+        // Initialize elements
         const textInput = document.getElementById('text-input');
         const playButton = document.getElementById('play-button');
         const pauseButton = document.getElementById('pause-button');
@@ -166,28 +274,14 @@
         const voiceSelect = document.getElementById('voice');
         const speedSelect = document.getElementById('speed');
         const pitchSelect = document.getElementById('pitch');
+        const chunkSizeSelect = document.getElementById('chunk-size');
         const statusDiv = document.getElementById('status');
-        const charCountElement = document.getElementById('char-count');
-        const requestCountElement = document.getElementById('request-count');
+        const currentChunkSpan = document.getElementById('current-chunk');
+        const totalChunksSpan = document.getElementById('total-chunks');
+        const progressFill = document.getElementById('progress-fill');
 
-        // Khởi tạo số requests từ localStorage hoặc reset nếu sang ngày mới
-        let lastDate = localStorage.getItem('lastDate');
-        let today = new Date().toDateString();
-        let requestCount = 0;
-
-        if (lastDate !== today) {
-            localStorage.setItem('lastDate', today);
-            localStorage.setItem('requestCount', '0');
-        } else {
-            requestCount = parseInt(localStorage.getItem('requestCount') || '0');
-            requestCountElement.textContent = `${requestCount}/5000`;
-        }
-
-        // Cập nhật số ký tự khi người dùng nhập
-        textInput.addEventListener('input', () => {
-            const charCount = textInput.value.length;
-            charCountElement.textContent = charCount.toLocaleString();
-        });
+        // Initialize TextQueue
+        const textQueue = new TextQueue();
 
         function showStatus(message, type) {
             statusDiv.textContent = message;
@@ -197,6 +291,13 @@
             }, 3000);
         }
 
+        function updateProgress(current, total) {
+            currentChunkSpan.textContent = current + 1;
+            totalChunksSpan.textContent = total;
+            const percentage = ((current + 1) / total) * 100;
+            progressFill.style.width = percentage + '%';
+        }
+
         playButton.addEventListener('click', () => {
             const text = textInput.value.trim();
             if (!text) {
@@ -204,43 +305,44 @@
                 return;
             }
 
-            if (requestCount >= 5000) {
-                showStatus('Đã đạt giới hạn requests trong ngày (5000). Vui lòng thử lại vào ngày mai.', 'error');
+            if (textQueue.isPaused) {
+                textQueue.resume();
                 return;
             }
 
-            if (responsiveVoice.isPlaying()) {
-                responsiveVoice.resume();
-            } else {
-                requestCount++;
-                localStorage.setItem('requestCount', requestCount.toString());
-                requestCountElement.textContent = `${requestCount}/5000`;
-                
-                responsiveVoice.speak(text, voiceSelect.value, {
-                    rate: parseFloat(speedSelect.value),
-                    pitch: parseFloat(pitchSelect.value),
-                    onstart: () => {
-                        showStatus('Đang đọc...', 'success');
-                    },
-                    onend: () => {
-                        showStatus('Đã đọc xong', 'success');
-                    },
-                    onerror: () => {
-                        showStatus('Có lỗi xảy ra khi đọc văn bản', 'error');
-                    }
-                });
+            if (!textQueue.isStopped) {
+                return;
             }
+
+            textQueue.reset();
+            const chunks = textQueue.splitText(text, parseInt(chunkSizeSelect.value));
+            totalChunksSpan.textContent = chunks.length;
+
+            textQueue.start(
+                (index) => updateProgress(index, chunks.length),
+                (index) => {
+                    if (index < chunks.length - 1) {
+                        showStatus(`Đã đọc xong đoạn ${index + 1}/${chunks.length}`, 'success');
+                    }
+                },
+                () => {
+                    showStatus('Đã đọc xong toàn bộ văn bản', 'success');
+                    textQueue.reset();
+                }
+            );
         });
 
         pauseButton.addEventListener('click', () => {
-            if (responsiveVoice.isPlaying()) {
-                responsiveVoice.pause();
+            if (!textQueue.isStopped && !textQueue.isPaused) {
+                textQueue.pause();
                 showStatus('Đã tạm dừng', 'success');
             }
         });
 
         stopButton.addEventListener('click', () => {
-            responsiveVoice.cancel();
+            textQueue.stop();
+            progressFill.style.width = '0%';
+            currentChunkSpan.textContent = '0';
             showStatus('Đã dừng', 'success');
         });
     </script>
