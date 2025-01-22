@@ -12,6 +12,7 @@
         <textarea id="input" rows="10" cols="80"></textarea>
         <br>
         <button onclick="extractContent()">Trích xuất nội dung</button>
+        <button onclick="clearInput()">Xóa nội dung</button>
     </div>
     
     <div>
@@ -31,14 +32,18 @@
     </div>
 
     <script>
+        function processText(text) {
+            return text
+                .replace(/([\.\?\!]|\.{3})\s+/g, '$1\n')  // Xuống dòng sau dấu câu
+                .replace(/^\s*([-–])\s*/gm, '\n$1 ')      // Xuống dòng trước gạch đầu dòng
+                .replace(/([""'])\s*\n/g, '$1\n');        // Giữ xuống dòng sau dấu ngoặc kép
+        }
+
         function extractContent() {
             const html = document.getElementById('input').value;
-            
-            // Tạo DOM parser
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
             
-            // Lấy title
             let title = '';
             const truyenTitle = doc.querySelector('.truyen-title');
             const chapterTitle = doc.querySelector('.chapter-title');
@@ -46,63 +51,42 @@
                 title = truyenTitle.textContent.trim() + ' - ' + chapterTitle.textContent.trim() + '\n\n';
             }
             
-            // Tìm phần nội dung chính
             const chapterContent = doc.querySelector('#chapter-c');
             if (!chapterContent) {
                 document.getElementById('output').value = 'Không tìm thấy nội dung chính';
                 return;
             }
 
-            // Xóa các phần quảng cáo
             const ads = chapterContent.querySelectorAll('.ads-responsive, .ads-chapter-bottom-lien-quan');
             ads.forEach(ad => ad.remove());
 
-            // Chuyển đổi thẻ br thành xuống dòng thật
             const brs = chapterContent.querySelectorAll('br');
-            brs.forEach(br => {
-                br.parentNode.replaceChild(doc.createTextNode('\n'), br);
-            });
+            brs.forEach(br => br.parentNode.replaceChild(doc.createTextNode('\n'), br));
 
-            // Lấy tất cả text nodes
             let content = '';
             const walk = document.createTreeWalker(
                 chapterContent,
                 NodeFilter.SHOW_TEXT,
-                {
-                    acceptNode: function(node) {
-                        return NodeFilter.FILTER_ACCEPT;
-                    }
-                }
+                { acceptNode: () => NodeFilter.FILTER_ACCEPT }
             );
 
             let node;
             while (node = walk.nextNode()) {
                 let text = node.textContent;
                 if (text.trim()) {
-                    // Thêm xuống dòng nếu text bắt đầu với dấu gạch ngang
-                    if (text.trim().startsWith('–') || text.trim().startsWith('-')) {
-                        content += '\n' + text;
-                    } else {
-                        content += text;
-                    }
-                    
-                    // Thêm xuống dòng sau mỗi thẻ p
+                    content += text;
                     if (node.parentNode.tagName === 'P') {
                         content += '\n\n';
                     }
                 }
             }
             
-            // Làm sạch kết quả cuối cùng
-            content = content
-                .replace(/\n\s+\n/g, '\n\n')   // Gộp các dòng trống có khoảng trắng
-                .replace(/\n{3,}/g, '\n\n')    // Giảm xuống dòng thừa thành 2 dòng
-                .trim();                       // Xóa khoảng trắng đầu/cuối
+            content = processText(content)
+                .replace(/\n\s+\n/g, '\n\n')
+                .replace(/\n{3,}/g, '\n\n')
+                .trim();
             
-            // Thêm title vào đầu nội dung
-            content = title + content;
-            
-            document.getElementById('output').value = content;
+            document.getElementById('output').value = title + content;
         }
         
         function saveAsText() {
@@ -131,6 +115,10 @@
             if (confirm('Bạn có chắc muốn xóa toàn bộ nội dung tổng hợp?')) {
                 document.getElementById('collection').value = '';
             }
+        }
+
+        function clearInput() {
+            document.getElementById('input').value = '';
         }
 
         function saveTextAsFile(content, filename) {
