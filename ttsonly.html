@@ -83,6 +83,23 @@
             color: #2e7d32;
             display: block;
         }
+        .info-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e3f2fd;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #1976d2;
+        }
     </style>
 </head>
 <body>
@@ -128,6 +145,17 @@
         </div>
 
         <div id="status" class="status"></div>
+        
+        <div class="info-panel">
+            <div class="info-item">
+                <span class="info-label">Số ký tự:</span>
+                <span id="char-count">0</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Requests hôm nay:</span>
+                <span id="request-count">0/5000</span>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -139,6 +167,27 @@
         const speedSelect = document.getElementById('speed');
         const pitchSelect = document.getElementById('pitch');
         const statusDiv = document.getElementById('status');
+        const charCountElement = document.getElementById('char-count');
+        const requestCountElement = document.getElementById('request-count');
+
+        // Khởi tạo số requests từ localStorage hoặc reset nếu sang ngày mới
+        let lastDate = localStorage.getItem('lastDate');
+        let today = new Date().toDateString();
+        let requestCount = 0;
+
+        if (lastDate !== today) {
+            localStorage.setItem('lastDate', today);
+            localStorage.setItem('requestCount', '0');
+        } else {
+            requestCount = parseInt(localStorage.getItem('requestCount') || '0');
+            requestCountElement.textContent = `${requestCount}/5000`;
+        }
+
+        // Cập nhật số ký tự khi người dùng nhập
+        textInput.addEventListener('input', () => {
+            const charCount = textInput.value.length;
+            charCountElement.textContent = charCount.toLocaleString();
+        });
 
         function showStatus(message, type) {
             statusDiv.textContent = message;
@@ -155,9 +204,18 @@
                 return;
             }
 
+            if (requestCount >= 5000) {
+                showStatus('Đã đạt giới hạn requests trong ngày (5000). Vui lòng thử lại vào ngày mai.', 'error');
+                return;
+            }
+
             if (responsiveVoice.isPlaying()) {
                 responsiveVoice.resume();
             } else {
+                requestCount++;
+                localStorage.setItem('requestCount', requestCount.toString());
+                requestCountElement.textContent = `${requestCount}/5000`;
+                
                 responsiveVoice.speak(text, voiceSelect.value, {
                     rate: parseFloat(speedSelect.value),
                     pitch: parseFloat(pitchSelect.value),
