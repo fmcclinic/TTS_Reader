@@ -186,6 +186,9 @@
                 this.currentIndex = 0;
                 this.isPaused = false;
                 this.isStopped = true;
+                this.preloadSize = 2;
+                this.preloadedAudio = new Map();
+                this.isPreloading = false;
             }
 
             reset() {
@@ -193,15 +196,57 @@
                 this.currentIndex = 0;
                 this.isPaused = false;
                 this.isStopped = true;
+                this.preloadedAudio.clear();
+            }
+
+            async preloadChunks(startIndex) {
+                if (this.isPreloading) return;
+                this.isPreloading = true;
+
+                try {
+                    for (let i = startIndex; i < Math.min(startIndex + this.preloadSize, this.chunks.length); i++) {
+                        if (this.isStopped) break;
+                        if (!this.preloadedAudio.has(i)) {
+                            await this.preloadChunk(i);
+                        }
+                    }
+                } finally {
+                    this.isPreloading = false;
+                }
+            }
+
+            preloadChunk(index) {
+                return new Promise((resolve) => {
+                    if (this.preloadedAudio.has(index)) {
+                        resolve();
+                        return;
+                    }
+
+                    const chunk = this.chunks[index];
+                    const utterance = new SpeechSynthesisUtterance(chunk);
+                    utterance.voice = speechSynthesis.getVoices().find(voice => voice.name === voiceSelect.value);
+                    utterance.rate = parseFloat(speedSelect.value);
+                    utterance.pitch = parseFloat(pitchSelect.value);
+
+                    const audioUrl = URL.createObjectURL(new Blob([chunk], { type: 'text/plain' }));
+                    
+                    this.preloadedAudio.set(index, {
+                        utterance: utterance,
+                        blob: audioUrl
+                    });
+
+                    resolve();
+                });
             }
 
             splitText(text, chunkSize) {
-                // Chia văn bản thành các đoạn nhỏ theo dấu câu
                 const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
                 let currentChunk = '';
                 
                 for (let sentence of sentences) {
                     sentence = sentence.trim();
+                    
+                    if (!sentence) continue;
                     
                     if (currentChunk.length + sentence.length <= chunkSize) {
                         currentChunk += (currentChunk ? ' ' : '') + sentence;
@@ -216,13 +261,15 @@
                 return this.chunks;
             }
 
-            start(onChunkStart, onChunkEnd, onComplete) {
+            async start(onChunkStart, onChunkEnd, onComplete) {
                 if (this.chunks.length === 0) return;
                 
                 this.isPaused = false;
                 this.isStopped = false;
 
-                const speakChunk = () => {
+                this.preloadChunks(this.currentIndex);
+
+                const speakChunk = async () => {
                     if (this.isStopped) return;
                     if (this.isPaused) return;
                     if (this.currentIndex >= this.chunks.length) {
@@ -230,23 +277,31 @@
                         return;
                     }
 
-                    const chunk = this.chunks[this.currentIndex];
                     onChunkStart(this.currentIndex);
 
-                    responsiveVoice.speak(chunk, voiceSelect.value, {
+                    if (!this.preloadedAudio.has(this.currentIndex)) {
+                        await this.preloadChunk(this.currentIndex);
+                    }
+
+                    this.preloadChunks(this.currentIndex + 1);
+
+                    const preloadedData = this.preloadedAudio.get(this.currentIndex);
+                    responsiveVoice.speak(this.chunks[this.currentIndex], voiceSelect.value, {
                         rate: parseFloat(speedSelect.value),
                         pitch: parseFloat(pitchSelect.value),
                         onend: () => {
                             if (!this.isStopped) {
                                 onChunkEnd(this.currentIndex);
                                 this.currentIndex++;
+                                URL.revokeObjectURL(preloadedData.blob);
+                                this.preloadedAudio.delete(this.currentIndex - 1);
                                 speakChunk();
                             }
                         }
                     });
                 };
 
-                speakChunk();
+                await speakChunk();
             }
 
             pause() {
@@ -263,6 +318,11 @@
                 this.isStopped = true;
                 this.currentIndex = 0;
                 responsiveVoice.cancel();
+                
+                this.preloadedAudio.forEach(data => {
+                    URL.revokeObjectURL(data.blob);
+                });
+                this.preloadedAudio.clear();
             }
         }
 
