@@ -34,9 +34,9 @@
     <script>
         function processText(text) {
             return text
-                .replace(/([\.\?\!]|\.{3})\s+/g, '$1\n')  // Xuống dòng sau dấu câu
-                .replace(/^\s*([-–])\s*/gm, '\n$1 ')      // Xuống dòng trước gạch đầu dòng
-                .replace(/([""'])\s*\n/g, '$1\n');        // Giữ xuống dòng sau dấu ngoặc kép
+                .replace(/([\.\?\!]|\.{3})\s+/g, '$1\n')
+                .replace(/^\s*([-–])\s*/gm, '\n$1 ')
+                .replace(/([""'])\s*\n/g, '$1\n');
         }
 
         function extractContent() {
@@ -44,11 +44,14 @@
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
             
-            let title = '';
+            // Xử lý tiêu đề với định dạng đặc biệt
             const truyenTitle = doc.querySelector('.truyen-title');
             const chapterTitle = doc.querySelector('.chapter-title');
+            let title = '';
             if (truyenTitle && chapterTitle) {
-                title = truyenTitle.textContent.trim() + ' - ' + chapterTitle.textContent.trim() + '\n\n';
+                const separator = '='.repeat(60);
+                const fullTitle = `${truyenTitle.textContent.trim()} - ${chapterTitle.textContent.trim()}`;
+                title = `${separator}\n${fullTitle.toUpperCase()}\n${separator}\n\n`;
             }
             
             const chapterContent = doc.querySelector('#chapter-c');
@@ -88,6 +91,10 @@
             
             document.getElementById('output').value = title + content;
         }
+
+        function clearInput() {
+            document.getElementById('input').value = '';
+        }
         
         function saveAsText() {
             const content = document.getElementById('output').value;
@@ -115,10 +122,6 @@
             if (confirm('Bạn có chắc muốn xóa toàn bộ nội dung tổng hợp?')) {
                 document.getElementById('collection').value = '';
             }
-        }
-
-        function clearInput() {
-            document.getElementById('input').value = '';
         }
 
         function saveTextAsFile(content, filename) {
