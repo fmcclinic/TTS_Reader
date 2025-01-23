@@ -8,7 +8,7 @@
     <h1>Trích xuất nội dung truyện</h1>
     
     <div>
-        <h3>Dán HTML vào đây:</h3>
+        <h3>1. Dán HTML vào đây:</h3>
         <textarea id="input" rows="10" cols="80"></textarea>
         <br>
         <button onclick="extractContent()">Trích xuất nội dung</button>
@@ -16,15 +16,15 @@
     </div>
     
     <div>
-        <h3>Kết quả:</h3>
+        <h3>2. Kết quả:</h3>
         <textarea id="output" rows="20" cols="80" readonly></textarea>
         <br>
         <button onclick="saveAsText()">Lưu thành file text</button>
-        <button onclick="addToCollection()">Thêm vào tổng hợp</button>
+        <button onclick="addToCollection()">Thêm vào tổng hợp + Copy</button>
     </div>
 
     <div>
-        <h3>Tổng hợp nội dung:</h3>
+        <h3>3. Tổng hợp nội dung:</h3>
         <textarea id="collection" rows="20" cols="80" readonly></textarea>
         <br>
         <button onclick="saveCollection()">Lưu tổng hợp</button>
@@ -34,9 +34,9 @@
     <script>
         function processText(text) {
             return text
-                .replace(/([\.\?\!]|\.{3})\s+/g, '$1\n')
-                .replace(/^\s*([-–])\s*/gm, '\n$1 ')
-                .replace(/([""'])\s*\n/g, '$1\n');
+                .replace(/([\.\?\!]|\.{3})\s+/g, '$1\n')  // Xuống dòng sau dấu câu
+                .replace(/^\s*([-–])\s*/gm, '\n$1 ')      // Xuống dòng trước gạch đầu dòng
+                .replace(/([""'])\s*\n/g, '$1\n');        // Giữ xuống dòng sau ngoặc kép
         }
 
         function extractContent() {
@@ -60,12 +60,15 @@
                 return;
             }
 
+            // Xóa quảng cáo
             const ads = chapterContent.querySelectorAll('.ads-responsive, .ads-chapter-bottom-lien-quan');
             ads.forEach(ad => ad.remove());
 
+            // Chuyển br thành xuống dòng
             const brs = chapterContent.querySelectorAll('br');
             brs.forEach(br => br.parentNode.replaceChild(doc.createTextNode('\n'), br));
 
+            // Lấy text
             let content = '';
             const walk = document.createTreeWalker(
                 chapterContent,
@@ -84,9 +87,10 @@
                 }
             }
             
+            // Xử lý định dạng
             content = processText(content)
-                .replace(/\n\s+\n/g, '\n\n')
-                .replace(/\n{3,}/g, '\n\n')
+                .replace(/\n\s+\n/g, '\n\n')   // Gộp dòng trống
+                .replace(/\n{3,}/g, '\n\n')    // Giảm xuống dòng thừa
                 .trim();
             
             document.getElementById('output').value = title + content;
@@ -101,16 +105,24 @@
             saveTextAsFile(content, 'noidung.txt');
         }
 
-        function addToCollection() {
+        async function addToCollection() {
             const content = document.getElementById('output').value;
             if (!content) return;
 
+            // Thêm vào tổng hợp
             const collection = document.getElementById('collection');
             if (collection.value) {
                 collection.value += '\n\n==========\n\n';
             }
             collection.value += content;
-            alert('Đã thêm vào tổng hợp!');
+
+            // Copy to clipboard
+            try {
+                await navigator.clipboard.writeText(content);
+                alert('Đã thêm vào tổng hợp và sao chép vào clipboard!');
+            } catch (err) {
+                alert('Đã thêm vào tổng hợp! (Không thể sao chép vào clipboard)');
+            }
         }
 
         function saveCollection() {
