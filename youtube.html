@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Trình phát video</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        input[type="text"] {
+            width: 60%;
+            padding: 10px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        #videoContainer {
+            margin-top: 30px;
+        }
+        iframe, video {
+            width: 80%;
+            max-width: 800px;
+            height: 450px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Nhập URL video</h1>
+    <input type="text" id="videoUrl" placeholder="Nhập URL video">
+    <button onclick="loadVideo()">Tải video</button>
+    <div id="videoContainer"></div>
+
+    <script>
+        function loadVideo() {
+            const url = document.getElementById('videoUrl').value.trim();
+            const videoContainer = document.getElementById('videoContainer');
+            videoContainer.innerHTML = '';
+
+            if (!url) {
+                alert('Vui lòng nhập URL hợp lệ.');
+                return;
+            }
+
+            // Kiểm tra và xử lý URL YouTube
+            const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w\-]+)/;
+            const youtubeMatch = url.match(youtubeRegex);
+            if (youtubeMatch && youtubeMatch[1]) {
+                const videoId = youtubeMatch[1];
+                const iframe = document.createElement('iframe');
+                iframe.src = `https://www.youtube.com/embed/${videoId}`;
+                iframe.frameBorder = '0';
+                iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+                iframe.allowFullscreen = true;
+                videoContainer.appendChild(iframe);
+                return;
+            }
+
+            // Kiểm tra và xử lý URL video trực tiếp
+            const videoExtensions = ['mp4', 'webm', 'ogg'];
+            const urlExtension = url.split('.').pop().toLowerCase();
+            if (videoExtensions.includes(urlExtension)) {
+                const video = document.createElement('video');
+                video.controls = true;
+                const source = document.createElement('source');
+                source.src = url;
+                source.type = `video/${urlExtension}`;
+                video.appendChild(source);
+                videoContainer.appendChild(video);
+                return;
+            }
+
+            // Nếu URL không hợp lệ
+            videoContainer.innerHTML = '<p>URL không hợp lệ hoặc không được hỗ trợ.</p>';
+        }
+    </script>
+</body>
+</html>
