@@ -106,11 +106,7 @@
             background-color: #9C27B0;
         }
 
-        button[onclick="playTextToSpeech()"] {
-            background-color: #FF5722; /* Màu cam cho nút phát */
-        }
-
-        button[onclick*="clear"], button[onclick="stopTextToSpeech()"] {
+        button[onclick*="clear"] {
             background-color: #f44336;
         }
 
@@ -172,8 +168,6 @@
         <textarea id="collection" rows="20" cols="80" readonly></textarea>
         <br>
         <button onclick="copyToClipboard()">Copy vào Clipboard</button>
-        <button onclick="playTextToSpeech()">Phát âm thanh</button>
-        <button onclick="stopTextToSpeech()">Dừng</button>
         <button onclick="clearCollection()">Xóa tổng hợp</button>
     </div>
 
@@ -232,7 +226,7 @@
             const chapterTitle = doc.querySelector('.chapter-title');
             let title = '';
             if (truyenTitle && chapterTitle) {
-                const separator = '.'.repeat(60);
+                const separator = '.'.repeat(60); // Thay "=" bằng "."
                 const fullTitle = `${truyenTitle.textContent.trim()} - ${chapterTitle.textContent.trim()}`;
                 title = `${separator}\n${fullTitle.toUpperCase()}\n${separator}\n\n`;
             }
@@ -366,36 +360,6 @@
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
-        }
-
-        // Text-to-Speech Functions
-        let speech = null;
-
-        function playTextToSpeech() {
-            const content = document.getElementById('collection').value;
-            if (!content) {
-                alert('Không có nội dung để phát âm thanh');
-                return;
-            }
-
-            if (speech) {
-                window.speechSynthesis.cancel(); // Dừng phát hiện tại nếu đang phát
-            }
-
-            speech = new SpeechSynthesisUtterance(content);
-            speech.lang = 'vi-VN'; // Đặt ngôn ngữ là tiếng Việt
-            speech.rate = 1.0; // Tốc độ đọc (1.0 là mặc định)
-            speech.pitch = 1.0; // Độ cao giọng (1.0 là mặc định)
-            speech.volume = 1.0; // Âm lượng (1.0 là tối đa)
-
-            window.speechSynthesis.speak(speech);
-        }
-
-        function stopTextToSpeech() {
-            if (speech) {
-                window.speechSynthesis.cancel();
-                speech = null;
-            }
         }
     </script>
 </body>
