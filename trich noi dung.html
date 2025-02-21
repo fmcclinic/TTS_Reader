@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Trích xuất nội dung truyện</title>
 
-  
     <style>
         .chapter-title-block {
             background: linear-gradient(45deg, #1a237e, #3949ab);
@@ -94,17 +93,24 @@
             transform: translateY(1px);
         }
 
-        /* Buttons with different colors */
         button[onclick="fetchMultipleUrls()"] {
             background-color: #2196F3;
         }
 
         button[onclick="saveAsText()"], 
-        button[onclick="saveCollection()"] {
+        button[onclick="copyToClipboard()"] {
             background-color: #4CAF50;
         }
 
-        button[onclick*="clear"] {
+        button[onclick="generateNextUrls()"] {
+            background-color: #9C27B0;
+        }
+
+        button[onclick="playTextToSpeech()"] {
+            background-color: #FF5722; /* Màu cam cho nút phát */
+        }
+
+        button[onclick*="clear"], button[onclick="stopTextToSpeech()"] {
             background-color: #f44336;
         }
 
@@ -112,13 +118,11 @@
             background-color: #FF9800;
         }
 
-        /* Style for URLs textarea */
         #urls {
             font-family: Arial, sans-serif;
             font-size: 14px;
         }
 
-        /* Responsive design */
         @media (max-width: 768px) {
             body {
                 padding: 10px;
@@ -130,12 +134,10 @@
             }
 
             textarea {
-                font-size: 16px; /* Better for mobile */
+                font-size: 16px;
             }
         }
     </style>
-
-
 </head>
 <body>
     <h1>Trích xuất nội dung truyện</h1>
@@ -145,6 +147,7 @@
         <textarea id="urls" rows="5" cols="80" placeholder="https://truyenfull.bio/cuu-thien-kiem-ss-ha-than/chuong-110/"></textarea>
         <br>
         <button onclick="fetchMultipleUrls()">Lấy nội dung tất cả URLs</button>
+        <button onclick="generateNextUrls()">Tạo URL tiếp theo</button>
         <button onclick="clearUrls()">Xóa URLs</button>
     </div>
     
@@ -168,7 +171,9 @@
         <h3>4. Tổng hợp nội dung:</h3>
         <textarea id="collection" rows="20" cols="80" readonly></textarea>
         <br>
-        <button onclick="saveCollection()">Lưu tổng hợp</button>
+        <button onclick="copyToClipboard()">Copy vào Clipboard</button>
+        <button onclick="playTextToSpeech()">Phát âm thanh</button>
+        <button onclick="stopTextToSpeech()">Dừng</button>
         <button onclick="clearCollection()">Xóa tổng hợp</button>
     </div>
 
@@ -227,7 +232,7 @@
             const chapterTitle = doc.querySelector('.chapter-title');
             let title = '';
             if (truyenTitle && chapterTitle) {
-                const separator = '='.repeat(60);
+                const separator = '.'.repeat(60);
                 const fullTitle = `${truyenTitle.textContent.trim()} - ${chapterTitle.textContent.trim()}`;
                 title = `${separator}\n${fullTitle.toUpperCase()}\n${separator}\n\n`;
             }
@@ -271,6 +276,34 @@
             return title + content;
         }
 
+        function generateNextUrls() {
+            const urlsText = document.getElementById('urls').value.trim();
+            if (!urlsText) {
+                alert('Vui lòng nhập ít nhất một URL');
+                return;
+            }
+
+            const lines = urlsText.split('\n').filter(line => line.trim());
+            const lastUrl = lines[lines.length - 1];
+
+            const chapterMatch = lastUrl.match(/chuong-(\d+)/);
+            if (!chapterMatch) {
+                alert('Không tìm thấy số chương trong URL');
+                return;
+            }
+
+            const chapterNum = parseInt(chapterMatch[1]);
+            const baseUrl = lastUrl.replace(/chuong-\d+\/?$/, '');
+
+            let newUrls = '';
+            for (let i = 1; i <= 3; i++) {
+                const nextChapter = chapterNum + i;
+                newUrls += `${baseUrl}chuong-${nextChapter}/\n`;
+            }
+
+            document.getElementById('urls').value = urlsText + '\n' + newUrls.trim();
+        }
+
         function clearUrls() {
             document.getElementById('urls').value = '';
         }
@@ -302,9 +335,19 @@
             }
         }
 
-        function saveCollection() {
+        async function copyToClipboard() {
             const content = document.getElementById('collection').value;
-            saveTextAsFile(content, 'tonghop.txt');
+            if (!content) {
+                alert('Không có nội dung để sao chép');
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(content);
+                alert('Đã sao chép toàn bộ nội dung vào clipboard!');
+            } catch (err) {
+                alert('Không thể sao chép vào clipboard: ' + err);
+            }
         }
 
         function clearCollection() {
@@ -323,6 +366,36 @@
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
+        }
+
+        // Text-to-Speech Functions
+        let speech = null;
+
+        function playTextToSpeech() {
+            const content = document.getElementById('collection').value;
+            if (!content) {
+                alert('Không có nội dung để phát âm thanh');
+                return;
+            }
+
+            if (speech) {
+                window.speechSynthesis.cancel(); // Dừng phát hiện tại nếu đang phát
+            }
+
+            speech = new SpeechSynthesisUtterance(content);
+            speech.lang = 'vi-VN'; // Đặt ngôn ngữ là tiếng Việt
+            speech.rate = 1.0; // Tốc độ đọc (1.0 là mặc định)
+            speech.pitch = 1.0; // Độ cao giọng (1.0 là mặc định)
+            speech.volume = 1.0; // Âm lượng (1.0 là tối đa)
+
+            window.speechSynthesis.speak(speech);
+        }
+
+        function stopTextToSpeech() {
+            if (speech) {
+                window.speechSynthesis.cancel();
+                speech = null;
+            }
         }
     </script>
 </body>
