@@ -226,9 +226,9 @@
             const chapterTitle = doc.querySelector('.chapter-title');
             let title = '';
             if (truyenTitle && chapterTitle) {
-                const separator = '.'.repeat(60); // Thay "=" bằng "."
+                // Loại bỏ separator hoàn toàn
                 const fullTitle = `${truyenTitle.textContent.trim()} - ${chapterTitle.textContent.trim()}`;
-                title = `${separator}\n${fullTitle.toUpperCase()}\n${separator}\n\n`;
+                title = `${fullTitle.toUpperCase()}\n\n`; // Chỉ giữ tiêu đề, thêm 2 dòng trống
             }
             
             const chapterContent = doc.querySelector('#chapter-c');
