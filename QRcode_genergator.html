@@ -53,47 +53,49 @@
             cursor: pointer;
             transition: background 0.3s;
         }
-        #generateBtn {
-            background-color: #4CAF50;
-            color: white;
+        #generateBtn { background-color: #4CAF50; color: white; }
+        #generateBtn:hover { background-color: #45a049; }
+        #clearHistory { background-color: #ff4444; color: white; }
+        #clearHistory:hover { background-color: #cc0000; }
+        .delete-btn { background-color: #ff6666; color: white; }
+        .delete-btn:hover { background-color: #ff3333; }
+        .copy-btn { background-color: #008CBA; color: white; }
+        .copy-btn:hover { background-color: #006d9e; }
+        #downloadBtn { background-color: #ff9800; color: white; margin-top: 10px; }
+        #downloadBtn:hover { background-color: #e68900; }
+        select { padding: 8px; margin-right: 10px; border-radius: 4px; }
+
+        /* CSS cho hộp thoại tùy chỉnh */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
         }
-        #generateBtn:hover {
-            background-color: #45a049;
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
-        #clearHistory {
-            background-color: #ff4444;
-            color: white;
+        .modal-content h3 {
+            margin: 0 0 10px;
+            color: #333;
         }
-        #clearHistory:hover {
-            background-color: #cc0000;
+        .modal-buttons button {
+            margin: 10px 5px;
         }
-        .delete-btn {
-            background-color: #ff6666;
-            color: white;
-        }
-        .delete-btn:hover {
-            background-color: #ff3333;
-        }
-        .copy-btn {
-            background-color: #008CBA;
-            color: white;
-        }
-        .copy-btn:hover {
-            background-color: #006d9e;
-        }
-        #downloadBtn {
-            background-color: #ff9800;
-            color: white;
-            margin-top: 10px;
-        }
-        #downloadBtn:hover {
-            background-color: #e68900;
-        }
-        select {
-            padding: 8px;
-            margin-right: 10px;
-            border-radius: 4px;
-        }
+        .modal-ok { background-color: #4CAF50; color: white; }
+        .modal-ok:hover { background-color: #45a049; }
+        .modal-cancel { background-color: #ff4444; color: white; }
+        .modal-cancel:hover { background-color: #cc0000; }
     </style>
 </head>
 <body>
@@ -119,10 +121,39 @@
         <div id="historyList"></div>
     </div>
 
+    <!-- Hộp thoại tùy chỉnh -->
+    <div id="customModal" class="modal">
+        <div class="modal-content">
+            <h3>Friend Medical Clinic thông báo</h3>
+            <p id="modalMessage"></p>
+            <div class="modal-buttons">
+                <button id="modalOk" class="modal-ok" onclick="modalResolve(true)">OK</button>
+                <button id="modalCancel" class="modal-cancel" onclick="modalResolve(false)" style="display: none;">Hủy</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Thư viện QRCode.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
         let qrHistory = JSON.parse(localStorage.getItem('qrHistory')) || [];
+        let modalResolve;
+
+        function showModal(message, isConfirm = false) {
+            return new Promise(resolve => {
+                const modal = document.getElementById("customModal");
+                const modalMessage = document.getElementById("modalMessage");
+                const modalCancel = document.getElementById("modalCancel");
+
+                modalMessage.textContent = message;
+                modalCancel.style.display = isConfirm ? "inline-block" : "none";
+                modal.style.display = "flex";
+                modalResolve = (result) => {
+                    modal.style.display = "none";
+                    resolve(result);
+                };
+            });
+        }
 
         function generateQR() {
             const text = document.getElementById("textInput").value;
@@ -131,16 +162,11 @@
             qrCodeDiv.innerHTML = "";
 
             if (!text) {
-                alert("Vui lòng nhập nội dung để tạo QR Code!");
+                showModal("Vui lòng nhập nội dung để tạo QR Code!");
                 return;
             }
 
-            new QRCode(qrCodeDiv, {
-                text: text,
-                width: size,
-                height: size
-            });
-
+            new QRCode(qrCodeDiv, { text: text, width: size, height: size });
             document.getElementById("downloadBtn").style.display = "inline-block";
 
             if (!qrHistory.some(item => item.text === text)) {
@@ -181,11 +207,7 @@
                 div.className = "history-item";
                 
                 const qrDiv = document.createElement("div");
-                new QRCode(qrDiv, {
-                    text: item.text,
-                    width: 100,
-                    height: 100
-                });
+                new QRCode(qrDiv, { text: item.text, width: 100, height: 100 });
 
                 const info = document.createElement("div");
                 info.innerHTML = `
@@ -211,18 +233,18 @@
             });
         }
 
-        function deleteItem(index) {
-            if (confirm("Bạn có chắc muốn xóa QR Code này?")) {
+        async function deleteItem(index) {
+            const confirmed = await showModal("Bạn có chắc muốn xóa QR Code này?", true);
+            if (confirmed) {
                 qrHistory.splice(index, 1);
                 localStorage.setItem('qrHistory', JSON.stringify(qrHistory));
                 displayHistory();
             }
         }
 
-        function copyText(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                alert("Đã sao chép: " + text);
-            });
+        async function copyText(text) {
+            await navigator.clipboard.writeText(text);
+            showModal("Đã sao chép: " + text);
         }
 
         function searchQR() {
@@ -230,8 +252,9 @@
             displayHistory(searchText);
         }
 
-        function clearHistory() {
-            if (confirm("Bạn có chắc muốn xóa toàn bộ lịch sử QR Code?")) {
+        async function clearHistory() {
+            const confirmed = await showModal("Bạn có chắc muốn xóa toàn bộ lịch sử QR Code?", true);
+            if (confirmed) {
                 qrHistory = [];
                 localStorage.setItem('qrHistory', JSON.stringify(qrHistory));
                 displayHistory();
