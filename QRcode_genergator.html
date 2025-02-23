@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạo và Quản lý QR Code</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .generator, .history {
+            margin: 20px 0;
+        }
+        #qrCode {
+            margin-top: 20px;
+        }
+        .history-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .history-item canvas {
+            max-width: 100px;
+        }
+        #textInput, #searchInput {
+            width: 400px;
+            padding: 8px;
+            margin-right: 10px;
+        }
+        .history-controls {
+            margin-top: 10px;
+        }
+        #clearHistory {
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        #clearHistory:hover {
+            background-color: #cc0000;
+        }
+    </style>
+</head>
+<body>
+    <div class="generator">
+        <h2>Tạo QR Code</h2>
+        <input type="text" id="textInput" placeholder="Nhập nội dung để tạo QR Code">
+        <button onclick="generateQR()">Tạo QR</button>
+        <div id="qrCode"></div>
+    </div>
+
+    <div class="history">
+        <h2>Lịch sử QR Code</h2>
+        <input type="text" id="searchInput" placeholder="Tìm kiếm QR Code đã lưu" oninput="searchQR()">
+        <div class="history-controls">
+            <button id="clearHistory" onclick="clearHistory()">Xóa lịch sử</button>
+        </div>
+        <div id="historyList"></div>
+    </div>
+
+    <!-- Thư viện QRCode.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        let qrHistory = JSON.parse(localStorage.getItem('qrHistory')) || [];
+
+        function generateQR() {
+            const text = document.getElementById("textInput").value;
+            const qrCodeDiv = document.getElementById("qrCode");
+            qrCodeDiv.innerHTML = "";
+
+            if (!text) {
+                alert("Vui lòng nhập nội dung để tạo QR Code!");
+                return;
+            }
+
+            new QRCode(qrCodeDiv, {
+                text: text,
+                width: 200,
+                height: 200
+            });
+
+            if (!qrHistory.some(item => item.text === text)) {
+                qrHistory.unshift({
+                    text: text,
+                    timestamp: new Date().toLocaleString()
+                });
+
+                if (qrHistory.length > 20) {
+                    qrHistory.pop();
+                }
+
+                localStorage.setItem('qrHistory', JSON.stringify(qrHistory));
+                displayHistory();
+            }
+        }
+
+        function displayHistory(filter = '') {
+            const historyList = document.getElementById("historyList");
+            historyList.innerHTML = "";
+
+            const filteredHistory = qrHistory.filter(item => 
+                item.text.toLowerCase().includes(filter.toLowerCase())
+            );
+
+            filteredHistory.forEach(item => {
+                const div = document.createElement("div");
+                div.className = "history-item";
+                
+                const qrDiv = document.createElement("div");
+                new QRCode(qrDiv, {
+                    text: item.text,
+                    width: 100,
+                    height: 100
+                });
+
+                const info = document.createElement("div");
+                info.innerHTML = `
+                    <strong>Nội dung:</strong> ${item.text}<br>
+                    <small>Thời gian: ${item.timestamp}</small>
+                `;
+
+                div.appendChild(qrDiv);
+                div.appendChild(info);
+                historyList.appendChild(div);
+            });
+        }
+
+        function searchQR() {
+            const searchText = document.getElementById("searchInput").value;
+            displayHistory(searchText);
+        }
+
+        function clearHistory() {
+            if (confirm("Bạn có chắc muốn xóa toàn bộ lịch sử QR Code?")) {
+                qrHistory = [];
+                localStorage.setItem('qrHistory', JSON.stringify(qrHistory));
+                displayHistory();
+            }
+        }
+
+        displayHistory();
+    </script>
+</body>
+</html>
