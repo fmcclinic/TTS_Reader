@@ -106,6 +106,10 @@
             background-color: #9C27B0;
         }
 
+        button[onclick="replaceWithNextUrls()"] {
+            background-color: #FF5722; /* Màu cam đậm để phân biệt */
+        }
+
         button[onclick*="clear"] {
             background-color: #f44336;
         }
@@ -144,6 +148,7 @@
         <br>
         <button onclick="fetchMultipleUrls()">Lấy nội dung tất cả URLs</button>
         <button onclick="generateNextUrls()">Tạo URL tiếp theo</button>
+        <button onclick="replaceWithNextUrls()">Xóa và tạo 4 URL mới</button>
         <button onclick="clearUrls()">Xóa URLs</button>
     </div>
     
@@ -226,9 +231,8 @@
             const chapterTitle = doc.querySelector('.chapter-title');
             let title = '';
             if (truyenTitle && chapterTitle) {
-                // Loại bỏ separator hoàn toàn
                 const fullTitle = `${truyenTitle.textContent.trim()} - ${chapterTitle.textContent.trim()}`;
-                title = `${fullTitle.toUpperCase()}\n\n`; // Chỉ giữ tiêu đề, thêm 2 dòng trống
+                title = `${fullTitle.toUpperCase()}\n\n`;
             }
             
             const chapterContent = doc.querySelector('#chapter-c');
@@ -296,6 +300,34 @@
             }
 
             document.getElementById('urls').value = urlsText + '\n' + newUrls.trim();
+        }
+
+        function replaceWithNextUrls() {
+            const urlsText = document.getElementById('urls').value.trim();
+            if (!urlsText) {
+                alert('Vui lòng nhập ít nhất một URL');
+                return;
+            }
+
+            const lines = urlsText.split('\n').filter(line => line.trim());
+            const lastUrl = lines[lines.length - 1];
+
+            const chapterMatch = lastUrl.match(/chuong-(\d+)/);
+            if (!chapterMatch) {
+                alert('Không tìm thấy số chương trong URL');
+                return;
+            }
+
+            const chapterNum = parseInt(chapterMatch[1]);
+            const baseUrl = lastUrl.replace(/chuong-\d+\/?$/, '');
+
+            let newUrls = '';
+            for (let i = 1; i <= 4; i++) {
+                const nextChapter = chapterNum + i;
+                newUrls += `${baseUrl}chuong-${nextChapter}/\n`;
+            }
+
+            document.getElementById('urls').value = newUrls.trim();
         }
 
         function clearUrls() {
