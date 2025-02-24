@@ -107,7 +107,7 @@
         }
 
         button[onclick="replaceWithNextUrls()"] {
-            background-color: #FF5722; /* Màu cam đậm để phân biệt */
+            background-color: #FF5722;
         }
 
         button[onclick*="clear"] {
@@ -121,6 +121,17 @@
         #urls {
             font-family: Arial, sans-serif;
             font-size: 14px;
+        }
+
+        #progress {
+            display: none;
+            background-color: #e0e0e0;
+            color: #333;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-weight: bold;
         }
 
         @media (max-width: 768px) {
@@ -145,15 +156,24 @@
     <div>
         <h3>1. Nhập URLs (mỗi URL một dòng):</h3>
         <textarea id="urls" rows="5" cols="80" placeholder="https://truyenfull.bio/cuu-thien-kiem-ss-ha-than/chuong-110/"></textarea>
+        <div id="progress"></div>
         <br>
         <button onclick="fetchMultipleUrls()">Lấy nội dung tất cả URLs</button>
         <button onclick="generateNextUrls()">Tạo URL tiếp theo</button>
         <button onclick="replaceWithNextUrls()">Xóa và tạo 4 URL mới</button>
         <button onclick="clearUrls()">Xóa URLs</button>
     </div>
+
+    <div>
+        <h3>2. Tổng hợp nội dung:</h3>
+        <textarea id="collection" rows="20" cols="80" readonly></textarea>
+        <br>
+        <button onclick="copyToClipboard()">Copy vào Clipboard</button>
+        <button onclick="clearCollection()">Xóa tổng hợp</button>
+    </div>
     
     <div>
-        <h3>2. Nội dung HTML:</h3>
+        <h3>3. Nội dung HTML:</h3>
         <textarea id="input" rows="10" cols="80" placeholder="Hoặc dán HTML vào đây..."></textarea>
         <br>
         <button onclick="extractContent()">Trích xuất nội dung</button>
@@ -161,19 +181,11 @@
     </div>
     
     <div>
-        <h3>3. Kết quả:</h3>
+        <h3>4. Kết quả:</h3>
         <textarea id="output" rows="20" cols="80" readonly></textarea>
         <br>
         <button onclick="saveAsText()">Lưu thành file text</button>
         <button onclick="addToCollection()">Thêm vào tổng hợp + Copy</button>
-    </div>
-
-    <div>
-        <h3>4. Tổng hợp nội dung:</h3>
-        <textarea id="collection" rows="20" cols="80" readonly></textarea>
-        <br>
-        <button onclick="copyToClipboard()">Copy vào Clipboard</button>
-        <button onclick="clearCollection()">Xóa tổng hợp</button>
     </div>
 
     <script>
@@ -186,13 +198,18 @@
                 return;
             }
 
+            const progress = document.getElementById('progress');
+            progress.style.display = 'block';
+            progress.textContent = 'Đang khởi động...';
+
             let allContent = '';
             let successCount = 0;
             let failCount = 0;
 
-            for (const url of urls) {
+            for (let i = 0; i < urls.length; i++) {
+                progress.textContent = `Đang xử lý URL ${i + 1}/${urls.length}`;
                 try {
-                    const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url.trim());
+                    const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(urls[i].trim());
                     const response = await fetch(proxyUrl);
                     if (!response.ok) throw new Error('Network error');
                     
@@ -206,12 +223,13 @@
                         successCount++;
                     }
                 } catch (error) {
-                    console.error(`Lỗi khi lấy URL ${url}:`, error);
+                    console.error(`Lỗi khi lấy URL ${urls[i]}:`, error);
                     failCount++;
                 }
             }
 
             document.getElementById('collection').value = allContent.trim();
+            progress.style.display = 'none';
             alert(`Hoàn thành!\nThành công: ${successCount} URL\nThất bại: ${failCount} URL`);
         }
 
