@@ -118,6 +118,14 @@
             background-color: #FF9800;
         }
 
+        button[onclick="speakText()"] {
+            background-color: #673AB7; /* Màu tím đậm cho nút Đọc to */
+        }
+
+        button[onclick="stopSpeaking()"] {
+            background-color: #F44336; /* Màu đỏ cho nút Dừng */
+        }
+
         #urls {
             font-family: Arial, sans-serif;
             font-size: 14px;
@@ -170,6 +178,8 @@
         <br>
         <button onclick="copyToClipboard()">Copy vào Clipboard</button>
         <button onclick="clearCollection()">Xóa tổng hợp</button>
+        <button onclick="speakText()">Đọc to</button>
+        <button onclick="stopSpeaking()">Dừng</button>
     </div>
     
     <div>
@@ -219,7 +229,7 @@
                     
                     const content = document.getElementById('output').value;
                     if (content) {
-                        allContent += content + '\n\n==========\n\n';
+                        allContent += content + '\n\n';
                         successCount++;
                     }
                 } catch (error) {
@@ -367,7 +377,7 @@
 
             const collection = document.getElementById('collection');
             if (collection.value) {
-                collection.value += '\n\n==========\n\n';
+                collection.value += '\n\n';
             }
             collection.value += content;
 
@@ -410,6 +420,67 @@
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
+        }
+
+        // TTS Functions
+        let currentUtterance = null;
+
+        function speakText() {
+            if (!('speechSynthesis' in window)) {
+                alert('Trình duyệt của bạn không hỗ trợ Text-to-Speech. Vui lòng dùng Chrome trên Android và cài đặt giọng tiếng Việt.');
+                return;
+            }
+
+            const text = document.getElementById('collection').value;
+            if (!text) {
+                alert('Không có nội dung để đọc');
+                return;
+            }
+
+            // Dừng nếu đang đọc
+            speechSynthesis.cancel();
+
+            // Chia văn bản thành các đoạn (dựa trên \n\n)
+            const paragraphs = text.split('\n\n').filter(p => p.trim());
+            const textarea = document.getElementById('collection');
+            let currentIndex = 0;
+
+            function speakNextParagraph() {
+                if (currentIndex >= paragraphs.length) {
+                    textarea.setSelectionRange(0, 0); // Xóa highlight khi xong
+                    return;
+                }
+
+                // Tính vị trí bắt đầu và kết thúc của đoạn trong textarea
+                const startPos = text.indexOf(paragraphs[currentIndex]);
+                const endPos = startPos + paragraphs[currentIndex].length;
+
+                // Highlight đoạn đang đọc
+                textarea.focus();
+                textarea.setSelectionRange(startPos, endPos);
+                textarea.scrollTop = textarea.scrollHeight * (startPos / text.length); // Cuộn đến đoạn đang đọc
+
+                // Tạo utterance cho đoạn hiện tại
+                currentUtterance = new SpeechSynthesisUtterance(paragraphs[currentIndex]);
+                currentUtterance.lang = 'vi-VN'; // Đặt ngôn ngữ tiếng Việt
+                currentUtterance.rate = 1.0; // Tốc độ đọc (có thể tùy chỉnh)
+                currentUtterance.onend = () => {
+                    currentIndex++;
+                    speakNextParagraph(); // Đọc đoạn tiếp theo khi xong
+                };
+
+                speechSynthesis.speak(currentUtterance);
+            }
+
+            speakNextParagraph();
+        }
+
+        function stopSpeaking() {
+            if ('speechSynthesis' in window) {
+                speechSynthesis.cancel();
+                const textarea = document.getElementById('collection');
+                textarea.setSelectionRange(0, 0); // Xóa highlight
+            }
         }
     </script>
 </body>
