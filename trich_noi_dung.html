@@ -118,12 +118,16 @@
             background-color: #FF9800;
         }
 
-        button[onclick="speakText()"] {
-            background-color: #673AB7; /* Màu tím đậm cho nút Đọc to */
+        button[onclick="readFromStart()"] {
+            background-color: #673AB7; /* Màu tím đậm cho Đọc từ đầu */
+        }
+
+        button[onclick="readFromCurrent()"] {
+            background-color: #3F51B5; /* Màu xanh tím cho Đọc tiếp */
         }
 
         button[onclick="stopSpeaking()"] {
-            background-color: #F44336; /* Màu đỏ cho nút Dừng */
+            background-color: #F44336; /* Màu đỏ cho Dừng */
         }
 
         #urls {
@@ -178,7 +182,8 @@
         <br>
         <button onclick="copyToClipboard()">Copy vào Clipboard</button>
         <button onclick="clearCollection()">Xóa tổng hợp</button>
-        <button onclick="speakText()">Đọc to</button>
+        <button onclick="readFromStart()">Đọc từ đầu</button>
+        <button onclick="readFromCurrent()">Đọc tiếp</button>
         <button onclick="stopSpeaking()">Dừng</button>
     </div>
     
@@ -425,7 +430,7 @@
         // TTS Functions
         let currentUtterance = null;
 
-        function speakText() {
+        function readFromStart() {
             if (!('speechSynthesis' in window)) {
                 alert('Trình duyệt của bạn không hỗ trợ Text-to-Speech. Vui lòng dùng Chrome trên Android và cài đặt giọng tiếng Việt.');
                 return;
@@ -440,7 +445,7 @@
             // Dừng nếu đang đọc
             speechSynthesis.cancel();
 
-            // Chia văn bản thành các đoạn (dựa trên \n\n)
+            // Chia văn bản thành các đoạn
             const paragraphs = text.split('\n\n').filter(p => p.trim());
             const textarea = document.getElementById('collection');
             let currentIndex = 0;
@@ -451,22 +456,82 @@
                     return;
                 }
 
-                // Tính vị trí bắt đầu và kết thúc của đoạn trong textarea
                 const startPos = text.indexOf(paragraphs[currentIndex]);
                 const endPos = startPos + paragraphs[currentIndex].length;
 
-                // Highlight đoạn đang đọc
                 textarea.focus();
                 textarea.setSelectionRange(startPos, endPos);
-                textarea.scrollTop = textarea.scrollHeight * (startPos / text.length); // Cuộn đến đoạn đang đọc
+                textarea.scrollTop = textarea.scrollHeight * (startPos / text.length);
 
-                // Tạo utterance cho đoạn hiện tại
                 currentUtterance = new SpeechSynthesisUtterance(paragraphs[currentIndex]);
-                currentUtterance.lang = 'vi-VN'; // Đặt ngôn ngữ tiếng Việt
-                currentUtterance.rate = 1.0; // Tốc độ đọc (có thể tùy chỉnh)
+                currentUtterance.lang = 'vi-VN';
+                currentUtterance.rate = 1.0;
                 currentUtterance.onend = () => {
                     currentIndex++;
-                    speakNextParagraph(); // Đọc đoạn tiếp theo khi xong
+                    speakNextParagraph();
+                };
+
+                speechSynthesis.speak(currentUtterance);
+            }
+
+            speakNextParagraph();
+        }
+
+        function readFromCurrent() {
+            if (!('speechSynthesis' in window)) {
+                alert('Trình duyệt của bạn không hỗ trợ Text-to-Speech. Vui lòng dùng Chrome trên Android và cài đặt giọng tiếng Việt.');
+                return;
+            }
+
+            const text = document.getElementById('collection').value;
+            if (!text) {
+                alert('Không có nội dung để đọc');
+                return;
+            }
+
+            // Dừng nếu đang đọc
+            speechSynthesis.cancel();
+
+            const textarea = document.getElementById('collection');
+            const startPos = textarea.selectionStart; // Vị trí bắt đầu của highlight
+            if (startPos === 0 && textarea.selectionEnd === 0) {
+                alert('Vui lòng chọn một vị trí để tiếp tục đọc');
+                return;
+            }
+
+            // Chia văn bản thành các đoạn
+            const paragraphs = text.split('\n\n').filter(p => p.trim());
+            let currentIndex = 0;
+
+            // Tìm đoạn chứa vị trí highlight
+            let cumulativeLength = 0;
+            for (let i = 0; i < paragraphs.length; i++) {
+                cumulativeLength += paragraphs[i].length + 2; // +2 cho \n\n
+                if (startPos <= cumulativeLength) {
+                    currentIndex = i;
+                    break;
+                }
+            }
+
+            function speakNextParagraph() {
+                if (currentIndex >= paragraphs.length) {
+                    textarea.setSelectionRange(0, 0); // Xóa highlight khi xong
+                    return;
+                }
+
+                const startPos = text.indexOf(paragraphs[currentIndex]);
+                const endPos = startPos + paragraphs[currentIndex].length;
+
+                textarea.focus();
+                textarea.setSelectionRange(startPos, endPos);
+                textarea.scrollTop = textarea.scrollHeight * (startPos / text.length);
+
+                currentUtterance = new SpeechSynthesisUtterance(paragraphs[currentIndex]);
+                currentUtterance.lang = 'vi-VN';
+                currentUtterance.rate = 1.0;
+                currentUtterance.onend = () => {
+                    currentIndex++;
+                    speakNextParagraph();
                 };
 
                 speechSynthesis.speak(currentUtterance);
