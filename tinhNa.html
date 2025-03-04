@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Ước tính NaCl cho Hạ Natri Máu (Nâng cao)</title>
+<style>
+  body {
+    font-family: sans-serif;
+  }
+  label {
+    display: block;
+    margin-bottom: 5px;
+  }
+  input[type="number"], select {
+    width: 200px;
+    padding: 5px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  button {
+    padding: 10px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+    button:hover {
+        background-color: #45a049;
+    }
+  #results {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+  }
+  .warning {
+    color: red;
+    font-weight: bold;
+    margin-top: 10px;
+    padding: 15px;
+    border: 1px solid #f44336;
+    background-color: #ffdddd;
+    border-radius: 4px;
+  }
+  .result-item {
+    margin-bottom: 8px;
+  }
+
+  .disclaimer{
+     font-size: 0.8em;
+     color: #666;
+     margin-top:20px;
+     padding: 10px;
+     border-top: 1px dashed #ccc;
+  }
+</style>
+</head>
+<body>
+
+<h1>Ước tính NaCl cho Hạ Natri Máu (Nâng cao)</h1>
+
+<label for="naclType">Loại dung dịch NaCl:</label>
+<select id="naclType">
+  <option value="0.10">NaCl 10% (171 mmol Na+/100mL)</option>
+  <option value="0.03">NaCl 3% (51.3 mmol Na+/100mL)</option>
+</select>
+
+<label for="gender">Giới tính:</label>
+<select id="gender">
+  <option value="0.5">Nữ</option>
+  <option value="0.6">Nam</option>
+</select>
+
+<label for="currentNa">Na+ hiện tại (mmol/L):</label>
+<input type="number" id="currentNa" step="0.1">
+
+<label for="desiredNa">Na+ mong muốn (mmol/L):</label>
+<input type="number" id="desiredNa" step="0.1">
+
+<label for="timeFrame">Thời gian điều chỉnh (giờ):</label>
+<select id="timeFrame">
+    <option value="24">24 giờ</option>
+    <option value="12">12 giờ</option>
+    <option value="6">6 giờ</option>
+    <option value="4">4 giờ</option>
+    <option value="2">2 giờ</option>
+    <option value="1">1 giờ</option>
+</select>
+
+<label for="weight">Cân nặng (kg):</label>
+<input type="number" id="weight" step="0.1">
+
+<button onclick="calculateNaCl()">Tính toán</button>
+
+<div id="results">
+  <!-- Kết quả -->
+</div>
+
+<div class="warning">
+  CẢNH BÁO: Công cụ này chỉ mang tính chất tham khảo và ước tính.  Việc điều trị hạ Natri máu, đặc biệt là hạ Natri máu nặng, là một quá trình phức tạp và cần được thực hiện bởi bác sĩ có kinh nghiệm, tại cơ sở y tế có đủ điều kiện theo dõi và xử trí cấp cứu.
+
+  <p><strong>Nguy cơ điều chỉnh Natri quá nhanh:</strong> Hạ Natri máu nặng là một tình trạng nguy hiểm, nhưng việc điều chỉnh nồng độ Natri quá nhanh cũng nguy hiểm không kém. Tăng Natri máu quá nhanh có thể dẫn đến các biến chứng thần kinh nghiêm trọng, bao gồm:</p>
+  <ul>
+      <li><strong>Hội chứng mất myelin thẩm thấu (Osmotic Demyelination Syndrome - ODS),</strong> còn gọi là hội chứng mất myelin cầu não: Đây là biến chứng nguy hiểm nhất, gây tổn thương các tế bào thần kinh, đặc biệt là ở cầu não. ODS có thể dẫn đến các di chứng thần kinh vĩnh viễn như liệt, rối loạn ngôn ngữ, rối loạn nuốt, hôn mê, thậm chí tử vong.</li>
+      <li>Co giật</li>
+      <li>Phù não</li>
+      <li>Thay đổi tri giác, lú lẫn, hôn mê</li>
+  </ul>
+
+  <p><strong>Tốc độ tăng Natri an toàn:</strong></p>
+    <ul>
+        <li>Mục tiêu chung là tăng Natri máu <b>không quá 10-12 mmol/L trong 24 giờ đầu</b>, và <b>không quá 18 mmol/L trong 48 giờ</b>.</li>
+        <li>Trong một số trường hợp hạ Natri máu cấp tính và nặng (có triệu chứng thần kinh nặng như co giật, hôn mê), có thể cần tăng Natri nhanh hơn trong vài giờ đầu (ví dụ, 4-6 mmol/L trong 4-6 giờ đầu), nhưng *phải được thực hiện dưới sự theo dõi sát sao của bác sĩ*.</li>
+        <li>Sau khi đạt được mức tăng Natri ban đầu an toàn, cần điều chỉnh tốc độ truyền để duy trì mức tăng Natri chậm và ổn định.</li>
+        <li><b>Tốc độ tăng Natri cụ thể cần được bác sĩ quyết định</b> dựa trên tình trạng lâm sàng của bệnh nhân, mức độ hạ Natri máu, thời gian mắc bệnh (cấp tính hay mạn tính), và các bệnh lý đi kèm.</li>
+    </ul>
+
+  <p><strong>Tổng lượng dịch cần truyền và nguy cơ quá tải thể tích:</strong></p>
+    <ul>
+        <li>Việc truyền dịch, đặc biệt là các dung dịch ưu trương như NaCl 3% hoặc 10%, cần được tính toán cẩn thận để tránh gây quá tải thể tích, đặc biệt ở bệnh nhân có bệnh tim, thận, hoặc suy gan.</li>
+        <li>Bác sĩ sẽ theo dõi sát lượng dịch vào và ra, cân nặng, tình trạng phù, áp lực tĩnh mạch trung tâm (nếu có), và các dấu hiệu sinh tồn khác để phát hiện sớm dấu hiệu quá tải thể tích.</li>
+        <li>Trong một số trường hợp, có thể cần sử dụng thuốc lợi tiểu để giúp loại bỏ bớt dịch thừa.</li>
+         <li>Tổng lượng dịch cần truyền sẽ được bác sĩ điều chỉnh dựa trên đáp ứng của bệnh nhân và các yếu tố nguy cơ.</li>
+    </ul>
+
+  <p><b>Luôn theo dõi điện giải đồ (Natri, Kali, Clo) thường xuyên (ít nhất mỗi 4-6 giờ) trong quá trình điều trị hạ Natri máu và tuân thủ nghiêm ngặt chỉ định của bác sĩ.</b></p>
+ <p><b>Tuyệt đối không tự ý điều trị hoặc thay đổi phác đồ điều trị.</b></p>
+</div>
+
+<div class="disclaimer">
+    Công cụ này được phát triển dựa trên các công thức ước tính và hướng dẫn y khoa hiện hành, nhưng không thể thay thế cho việc thăm khám và tư vấn trực tiếp của bác sĩ.  Mọi quyết định điều trị cần dựa trên đánh giá toàn diện của bác sĩ về tình trạng cụ thể của bệnh nhân.
+</div>
+
+<script>
+function calculateNaCl() {
+  // Lấy giá trị
+  const naclType = parseFloat(document.getElementById("naclType").value);
+  const gender = parseFloat(document.getElementById("gender").value);
+  const currentNa = parseFloat(document.getElementById("currentNa").value);
+  const desiredNa = parseFloat(document.getElementById("desiredNa").value);
+  const timeFrame = parseFloat(document.getElementById("timeFrame").value);
+  const weight = parseFloat(document.getElementById("weight").value);
+
+  // Kiểm tra
+  if (isNaN(currentNa) || isNaN(desiredNa) || isNaN(weight) || isNaN(timeFrame)) {
+    document.getElementById("results").innerHTML = "<p>Vui lòng nhập đầy đủ và chính xác các thông số.</p>";
+    return;
+  }
+  if (currentNa >= desiredNa) {
+    document.getElementById("results").innerHTML = "<p>Na+ hiện tại phải nhỏ hơn Na+ mong muốn.</p>";
+    return;
+  }
+
+  // Tính toán
+  const tbw = gender * weight;
+  const naDeficit = (desiredNa - currentNa) * tbw;
+
+  let mmolPer100ml;
+  if (naclType === 0.10) {
+    mmolPer100ml = 171;
+  } else if (naclType === 0.03) {
+    mmolPer100ml = 51.3;
+  }
+
+  const volumeNeeded = (naDeficit / mmolPer100ml) * 100;
+  const infusionRate = volumeNeeded / timeFrame;
+
+  // Hiển thị
+  let resultHTML = `
+    <p class="result-item"><strong>Tổng lượng Natri cần bù:</strong> ${naDeficit.toFixed(2)} mmol</p>
+    <p class="result-item"><strong>Thể tích dung dịch NaCl ${naclType * 100}% cần:</strong> ${volumeNeeded.toFixed(2)} mL</p>
+    <p class="result-item"><strong>Tốc độ truyền:</strong> ${infusionRate.toFixed(2)} mL/giờ</p>
+  `;
+  document.getElementById("results").innerHTML = resultHTML;
+}
+</script>
+
+</body>
+</html>
