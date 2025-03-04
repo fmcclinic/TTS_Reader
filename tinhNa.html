@@ -1,33 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Ước tính NaCl bù cho Hạ Natri Máu (Nâng cao)</title>
+<title>Ước tính NaCl cho Hạ Natri Máu (Mobile-Friendly)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
   body {
     font-family: sans-serif;
+    margin: 0; /* Loại bỏ margin mặc định */
+    padding: 10px; /* Thêm padding cho toàn bộ trang */
+    box-sizing: border-box; /* Đảm bảo padding không làm tăng kích thước tổng */
   }
   label {
     display: block;
     margin-bottom: 5px;
+    font-size: 1em; /* Kích thước chữ tương đối */
   }
   input[type="number"], select {
-    width: 200px;
-    padding: 5px;
-    margin-bottom: 10px;
+    width: 100%; /* Chiều rộng 100% của phần tử cha */
+    padding: 12px; /* Tăng padding */
+    margin-bottom: 15px; /* Tăng margin */
     border: 1px solid #ccc;
     border-radius: 4px;
+    box-sizing: border-box; /* Quan trọng: padding không làm tăng width */
+    font-size: 1em; /* Kích thước chữ tương đối */
   }
   button {
-    padding: 10px 15px;
+    width: 100%; /* Chiều rộng 100% */
+    padding: 15px; /* Tăng padding */
     background-color: #4CAF50;
     color: white;
     border: none;
     cursor: pointer;
     border-radius: 4px;
+    font-size: 1em; /* Kích thước chữ tương đối */
   }
-    button:hover {
-        background-color: #45a049;
-    }
+  button:hover {
+    background-color: #45a049;
+  }
   #results {
     margin-top: 20px;
     padding: 15px;
@@ -46,20 +55,36 @@
   }
   .result-item {
     margin-bottom: 8px;
+    font-size: 1em; /* Kích thước chữ tương đối */
   }
 
-  .disclaimer{
-     font-size: 0.8em;
-     color: #666;
-     margin-top:20px;
-     padding: 10px;
-     border-top: 1px dashed #ccc;
+  .disclaimer {
+    font-size: 0.8em;
+    color: #666;
+    margin-top: 20px;
+    padding: 10px;
+    border-top: 1px dashed #ccc;
+  }
+
+  /* Responsive Design (Media Queries) */
+  @media (min-width: 768px) {
+    /* Điều chỉnh cho màn hình lớn hơn (tablet, desktop) */
+    input[type="number"], select, button {
+      width: auto; /* Trở về kích thước tự động */
+      max-width: 300px; /* Giới hạn chiều rộng tối đa */
+    }
+     label{
+        font-size: 1.2em;
+     }
+     .result-item{
+        font-size: 1.2em;
+     }
   }
 </style>
 </head>
 <body>
 
-<h1>Ước tính NaCl cho Hạ Natri Máu (Nâng cao)</h1>
+<h1>Ước tính NaCl cho Hạ Natri Máu</h1>
 
 <label for="naclType">Loại dung dịch NaCl:</label>
 <select id="naclType">
