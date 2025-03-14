@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhúng Video với Fullscreen</title>
+    <style>
+        body {
+            text-align: center;
+            background: #222;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        .input-container {
+            margin-bottom: 15px;
+        }
+        input {
+            width: 60%;
+            padding: 8px;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+        }
+        button {
+            padding: 8px 12px;
+            margin-left: 5px;
+            border: none;
+            background: #28a745;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        iframe {
+            width: 80%;
+            max-width: 800px;
+            height: 450px;
+            margin: auto;
+            display: none; /* Ẩn ban đầu */
+            border: 2px solid white;
+            border-radius: 10px;
+            background: black;
+        }
+        .fullscreen-button {
+            display: none; /* Ẩn ban đầu */
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Nhúng Video với Toàn Màn Hình</h2>
+
+    <div class="input-container">
+        <input type="text" id="videoUrl" placeholder="Nhập URL video">
+        <button onclick="loadVideo()">Tải Video</button>
+    </div>
+
+    <iframe id="videoFrame" allowfullscreen sandbox="allow-scripts allow-same-origin"></iframe>
+    <button class="fullscreen-button" onclick="toggleFullscreen()">⛶</button>
+
+    <script>
+        function loadVideo() {
+            let url = document.getElementById("videoUrl").value;
+            if (url.trim() !== "") {
+                document.getElementById("videoFrame").src = url;
+                document.getElementById("videoFrame").style.display = "block";
+                document.querySelector(".fullscreen-button").style.display = "block";
+            }
+        }
+
+        function toggleFullscreen() {
+            let elem = document.getElementById("videoFrame");
+
+            if (!document.fullscreenElement) {
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen();
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen();
+                } else if (elem.mozRequestFullScreen) {
+                    elem.mozRequestFullScreen();
+                } else if (elem.msRequestFullscreen) {
+                    elem.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+    </script>
+</body>
+</html>
