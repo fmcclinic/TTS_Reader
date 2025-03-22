@@ -277,7 +277,9 @@ content += '\n\n';
 }
 }
 
-content = processText(content)
+// Thay đổi biểu thức chính quy ở đây
+content = content
+.replace(/([\.!\?]\s+)/g, '$1\n') // Xuống dòng sau dấu chấm câu và khoảng trắng
 .replace(/\n\s+\n/g, '\n\n')
 .replace(/\n{3,}/g, '\n\n')
 .trim();
