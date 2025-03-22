@@ -121,9 +121,6 @@ button[onclick="readFromCurrent()"]:hover { background-color: #563d7c; }
 button[onclick="stopSpeaking()"] { background-color: #e83e8c; } /* Hồng */
 button[onclick="stopSpeaking()"]:hover { background-color: #c62869; }
 
-button[onclick="stopCurrentSpeaking()"] { background-color: #f44336; } /* Màu đỏ cho Dừng */
-button[onclick="stopCurrentSpeaking()"]:hover { background-color: #d32f2f; }
-
 @media (max-width: 768px) {
 body {
 padding: 10px;
@@ -166,8 +163,7 @@ font-size: 14px;
 <button onclick="clearCollection()">Xóa tổng hợp</button>
 <button onclick="readFromStart()">Đọc từ đầu</button>
 <button onclick="readFromCurrent()">Đọc tiếp</button>
-<button onclick="stopSpeaking()">Nút đọc đoạn tiếp theo</button>
-<button onclick="stopCurrentSpeaking()">Dừng đọc tại đoạn hiện tại</button>
+<button onclick="stopSpeaking()">Dừng đọc</button>
 </div>
 
 <div class="form-group">
@@ -281,8 +277,7 @@ content += '\n\n';
 }
 }
 
-content = content
-.replace(/([\.!\?]\s+)/g, '$1\n')
+content = processText(content)
 .replace(/\n\s+\n/g, '\n\n')
 .replace(/\n{3,}/g, '\n\n')
 .trim();
@@ -413,7 +408,6 @@ document.body.removeChild(a);
 
 // TTS Functions
 let currentUtterance = null;
-let currentIndex = 0; // Thêm biến để theo dõi đoạn hiện tại
 
 function readFromStart() {
 if (!('speechSynthesis' in window)) {
@@ -428,9 +422,35 @@ return;
 }
 
 speechSynthesis.cancel();
-paragraphs = text.split('\n\n').filter(p => p.trim());
-textarea = document.getElementById('collection');
-currentIndex = 0; // Reset lại index khi đọc từ đầu
+
+const paragraphs = text.split('\n\n').filter(p => p.trim());
+const textarea = document.getElementById('collection');
+let currentIndex = 0;
+
+function speakNextParagraph() {
+if (currentIndex >= paragraphs.length) {
+textarea.setSelectionRange(0, 0);
+return;
+}
+
+const startPos = text.indexOf(paragraphs[currentIndex]);
+const endPos = startPos + paragraphs[currentIndex].length;
+
+textarea.focus();
+textarea.setSelectionRange(startPos, endPos);
+textarea.scrollTop = textarea.scrollHeight * (startPos / text.length);
+
+currentUtterance = new SpeechSynthesisUtterance(paragraphs[currentIndex]);
+currentUtterance.lang = 'vi-VN';
+currentUtterance.rate = 1.0;
+currentUtterance.onend = () => {
+currentIndex++;
+speakNextParagraph();
+};
+
+speechSynthesis.speak(currentUtterance);
+}
+
 speakNextParagraph();
 }
 
@@ -455,7 +475,8 @@ alert('Vui lòng chọn một vị trí để tiếp tục đọc');
 return;
 }
 
-paragraphs = text.split('\n\n').filter(p => p.trim());
+const paragraphs = text.split('\n\n').filter(p => p.trim());
+let currentIndex = 0;
 let cumulativeLength = 0;
 for (let i = 0; i < paragraphs.length; i++) {
 cumulativeLength += paragraphs[i].length + 2;
@@ -463,8 +484,6 @@ if (startPos <= cumulativeLength) {
 currentIndex = i;
 break;
 }
-}
-speakNextParagraph();
 }
 
 function speakNextParagraph() {
@@ -491,17 +510,10 @@ speakNextParagraph();
 speechSynthesis.speak(currentUtterance);
 }
 
-function stopSpeaking() {
-// Chức năng này bây giờ sẽ đọc đoạn tiếp theo
-if ('speechSynthesis' in window) {
-speechSynthesis.cancel();
-currentIndex++;
 speakNextParagraph();
 }
-}
 
-function stopCurrentSpeaking() {
-// Chức năng này sẽ dừng đọc ngay lập tức
+function stopSpeaking() {
 if ('speechSynthesis' in window) {
 speechSynthesis.cancel();
 const textarea = document.getElementById('collection');
