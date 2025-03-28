@@ -243,12 +243,21 @@
             alert(`Hoàn thành!\nThành công: ${successCount} URL\nThất bại: ${failCount} URL`);
         }
 
-        function processText(text) {
-            return text
-                .replace(/([\.\?\!]|\.{3})\s+/g, '$1\n')
-                .replace(/^\s*([-–])\s*/gm, '\n$1 ')
-                .replace(/([""'])\s*\n/g, '$1\n');
-        }
+function processText(text) {
+    // 1. Loại bỏ dấu xuống dòng không nằm sau dấu chấm câu
+    text = text.replace(/(?<![\.\?\!])\n/g, ' ');
+
+    // 2. Chia tách các câu dựa trên dấu chấm câu
+    text = text.replace(/([\.\?\!]|\.{3})\s+/g, '$1\n');
+
+    // 3. Xử lý các dòng bắt đầu bằng dấu gạch ngang
+    text = text.replace(/^\s*([-–])\s*/gm, '\n$1 ');
+
+    // 4. Xử lý dấu xuống dòng sau dấu ngoặc kép
+    text = text.replace(/([""'])\s*\n/g, '$1\n');
+
+    return text;
+}
 
         async function extractContent() {
     const html = document.getElementById('input').value;
