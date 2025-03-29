@@ -1,38 +1,22 @@
-https://truyenfull.vision/ta-tu-tien-tai-gia-toc/chuong-728/
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trích xuất nội dung truyện</title>
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
+
+
     <style>
-        .chapter-title-block {
-            background: linear-gradient(45deg, #1a237e, #3949ab);
-            color: white;
-            padding: 20px;
-            margin: 10px 0;
-            border-radius: 10px;
-            text-align: center;
-            font-size: 1.2em;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            position: relative;
-        }
-
-        .chapter-title-block::before,
-        .chapter-title-block::after {
-            content: '';
-            display: block;
-            height: 3px;
-            background: linear-gradient(90deg, #1a237e, #3949ab);
-            margin: 10px 0;
-        }
-
         body {
             font-family: Arial, sans-serif;
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
             background-color: #f5f5f5;
+            line-height: 1.6;
         }
 
         h1 {
@@ -41,12 +25,12 @@ https://truyenfull.vision/ta-tu-tien-tai-gia-toc/chuong-728/
             font-size: 2.5em;
             text-transform: uppercase;
             margin-bottom: 30px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
             background: linear-gradient(45deg, #1a237e, #3949ab);
             color: white;
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         h3 {
@@ -60,7 +44,7 @@ https://truyenfull.vision/ta-tu-tien-tai-gia-toc/chuong-728/
             background: white;
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
         }
 
@@ -72,18 +56,20 @@ https://truyenfull.vision/ta-tu-tien-tai-gia-toc/chuong-728/
             resize: vertical;
             font-family: 'Courier New', monospace;
             margin-bottom: 10px;
+            font-size: 16px;
         }
 
         button {
             background-color: #1a237e;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 24px;
             border-radius: 5px;
             cursor: pointer;
             margin-right: 10px;
             margin-bottom: 10px;
             transition: background-color 0.3s;
+            font-size: 1em;
         }
 
         button:hover {
@@ -94,63 +80,54 @@ https://truyenfull.vision/ta-tu-tien-tai-gia-toc/chuong-728/
             transform: translateY(1px);
         }
 
-        button[onclick="fetchMultipleUrls()"] {
-            background-color: #2196F3;
+        /* Các màu sắc nút cụ thể */
+        button[onclick="fetchMultipleUrls()"] { background-color: #2196F3; }
+        button[onclick="generateNextUrls()"] { background-color: #9C27B0; }
+        button[onclick="replaceWithNextUrls()"] { background-color: #FF5722; }
+        button[onclick*="clear"] { background-color: #f44336; }
+        button[onclick="copyToClipboard()"], button[onclick="saveAsText()"], button[onclick="addToCollection()"] { background-color: #4CAF50; }
+        button[onclick="speakText()"] { background-color: #673AB7; }
+        button[onclick="stopSpeaking()"] { background-color: #F44336; }
+
+        #progress-container {
+            display: none;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            padding: 10px;
         }
 
-        button[onclick="saveAsText()"], 
-        button[onclick="copyToClipboard()"] {
+        #progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        #progress-bar-fill {
+            width: 0%;
+            height: 100%;
             background-color: #4CAF50;
         }
 
-        button[onclick="generateNextUrls()"] {
-            background-color: #9C27B0;
-        }
-
-        button[onclick="replaceWithNextUrls()"] {
-            background-color: #FF5722;
-        }
-
-        button[onclick*="clear"] {
-            background-color: #f44336;
-        }
-
-        button[onclick="addToCollection()"] {
-            background-color: #FF9800;
-        }
-
-        button[onclick="speakText()"] {
-            background-color: #673AB7; /* Màu tím đậm cho nút Đọc to */
-        }
-
-        button[onclick="stopSpeaking()"] {
-            background-color: #F44336; /* Màu đỏ cho nút Dừng */
-        }
-
-        #urls {
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-        }
-
-        #progress {
-            display: none;
-            background-color: #e0e0e0;
-            color: #333;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 10px;
+        #progress-text {
             text-align: center;
-            font-weight: bold;
+            margin-top: 5px;
         }
 
         @media (max-width: 768px) {
             body {
                 padding: 10px;
             }
-            
+
             button {
                 width: 100%;
                 margin-bottom: 5px;
+                padding: 15px 30px;
+                font-size: 1.1em;
+                min-width: 100px;
+                min-height: 48px;
             }
 
             textarea {
@@ -161,11 +138,16 @@ https://truyenfull.vision/ta-tu-tien-tai-gia-toc/chuong-728/
 </head>
 <body>
     <h1>Trích xuất nội dung truyện</h1>
-    
+
     <div>
         <h3>1. Nhập URLs (mỗi URL một dòng):</h3>
         <textarea id="urls" rows="5" cols="80" placeholder="https://truyenfull.bio/cuu-thien-kiem-ss-ha-than/chuong-110/"></textarea>
-        <div id="progress"></div>
+        <div id="progress-container">
+            <div id="progress-bar">
+                <div id="progress-bar-fill"></div>
+            </div>
+            <p id="progress-text"></p>
+        </div>
         <br>
         <button onclick="fetchMultipleUrls()">Lấy nội dung tất cả URLs</button>
         <button onclick="generateNextUrls()">Tạo URL tiếp theo</button>
@@ -181,8 +163,16 @@ https://truyenfull.vision/ta-tu-tien-tai-gia-toc/chuong-728/
         <button onclick="clearCollection()">Xóa tổng hợp</button>
         <button onclick="speakText()">Đọc to</button>
         <button onclick="stopSpeaking()">Dừng</button>
+        <div>
+            <label for="rate">Tốc độ đọc:</label>
+            <input type="range" id="rate" min="0.5" max="2" value="1" step="0.1">
+            <label for="pitch">Cao độ:</label>
+            <input type="range" id="pitch" min="0.5" max="2" value="1" step="0.1">
+            <label for="voice">Giọng đọc:</label>
+            <select id="voice"></select>
+        </div>
     </div>
-    
+
     <div>
         <h3>3. Nội dung HTML:</h3>
         <textarea id="input" rows="10" cols="80" placeholder="Hoặc dán HTML vào đây..."></textarea>
@@ -190,7 +180,7 @@ https://truyenfull.vision/ta-tu-tien-tai-gia-toc/chuong-728/
         <button onclick="extractContent()">Trích xuất nội dung</button>
         <button onclick="clearInput()">Xóa nội dung</button>
     </div>
-    
+
     <div>
         <h3>4. Kết quả:</h3>
         <textarea id="output" rows="20" cols="80" readonly></textarea>
@@ -199,302 +189,316 @@ https://truyenfull.vision/ta-tu-tien-tai-gia-toc/chuong-728/
         <button onclick="addToCollection()">Thêm vào tổng hợp + Copy</button>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
+    
     <script>
-        async function fetchMultipleUrls() {
-            const urlsText = document.getElementById('urls').value;
-            const urls = urlsText.split('\n').filter(url => url.trim());
-            
-            if (urls.length === 0) {
-                alert('Vui lòng nhập ít nhất một URL');
-                return;
-            }
+async function fetchMultipleUrls() {
+        const urlsText = document.getElementById('urls').value;
+        const urls = urlsText.split('\n').filter(url => url.trim());
 
-            const progress = document.getElementById('progress');
-            progress.style.display = 'block';
-            progress.textContent = 'Đang khởi động...';
-
-            let allContent = '';
-            let successCount = 0;
-            let failCount = 0;
-
-            for (let i = 0; i < urls.length; i++) {
-                progress.textContent = `Đang xử lý URL ${i + 1}/${urls.length}`;
-                try {
-                    const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(urls[i].trim());
-                    const response = await fetch(proxyUrl);
-                    if (!response.ok) throw new Error('Network error');
-                    
-                    const data = await response.json();
-                    document.getElementById('input').value = data.contents;
-                    await extractContent();
-                    
-                    const content = document.getElementById('output').value;
-                    if (content) {
-                        allContent += content + '\n\n';
-                        successCount++;
-                    }
-                } catch (error) {
-                    console.error(`Lỗi khi lấy URL ${urls[i]}:`, error);
-                    failCount++;
-                }
-            }
-
-            document.getElementById('collection').value = allContent.trim();
-            progress.style.display = 'none';
-            alert(`Hoàn thành!\nThành công: ${successCount} URL\nThất bại: ${failCount} URL`);
-        }
-
-function processText(text) {
-    // 1. Loại bỏ dấu xuống dòng không nằm sau dấu chấm câu
-    text = text.replace(/(?<![\.\?\!])\n/g, ' ');
-
-    // 2. Chia tách các câu dựa trên dấu chấm câu
-    text = text.replace(/([\.\?\!]|\.{3})\s+/g, '$1\n');
-
-    // 3. Xử lý các dòng bắt đầu bằng dấu gạch ngang
-    text = text.replace(/^\s*([-–])\s*/gm, '\n$1 ');
-
-    // 4. Xử lý dấu xuống dòng sau dấu ngoặc kép
-    text = text.replace(/([""'])\s*\n/g, '$1\n');
-
-    return text;
-}
-
-        async function extractContent() {
-    const html = document.getElementById('input').value;
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-
-    const truyenTitle = doc.querySelector('.truyen-title');
-    const chapterTitle = doc.querySelector('.chapter-title');
-    let title = '';
-    if (truyenTitle && chapterTitle) {
-        const fullTitle = `${truyenTitle.textContent.trim()} - ${chapterTitle.textContent.trim()}`;
-        title = `${fullTitle.toUpperCase()}\n\n`;
-    }
-
-    let chapterContent = doc.querySelector('#chapter-c');
-    if (!chapterContent) {
-        // Thử tìm nội dung trong các thẻ <p> bên trong <div>
-        chapterContent = doc.querySelector('div');
-        if (!chapterContent) {
-            document.getElementById('output').value = 'Không tìm thấy nội dung chính';
+        if (urls.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Cảnh báo',
+                text: 'Vui lòng nhập ít nhất một URL',
+            });
             return;
         }
-    }
 
-    const ads = chapterContent.querySelectorAll('.ads-responsive, .ads-chapter-bottom-lien-quan');
-    ads.forEach(ad => ad.remove());
+        const progressBarFill = document.getElementById('progress-bar-fill');
+        const progressText = document.getElementById('progress-text');
+        const progressContainer = document.getElementById('progress-container');
+        progressContainer.style.display = 'block';
 
-    const brs = chapterContent.querySelectorAll('br');
-    brs.forEach(br => br.parentNode.replaceChild(doc.createTextNode('\n'), br));
+        let allContent = '';
+        let successCount = 0;
+        let failCount = 0;
 
-    let content = '';
-    const walk = document.createTreeWalker(
-        chapterContent,
-        NodeFilter.SHOW_TEXT,
-        { acceptNode: () => NodeFilter.FILTER_ACCEPT }
-    );
-
-    let node;
-    while (node = walk.nextNode()) {
-        let text = node.textContent;
-        if (text.trim()) {
-            content += text;
-            if (node.parentNode.tagName === 'P') {
-                content += '\n\n';
-            }
-        }
-    }
-
-    content = processText(content)
-        .replace(/\n\s+\n/g, '\n\n')
-        .replace(/\n{3,}/g, '\n\n')
-        .trim();
-
-    document.getElementById('output').value = title + content;
-    return title + content;
-}
-        function generateNextUrls() {
-            const urlsText = document.getElementById('urls').value.trim();
-            if (!urlsText) {
-                alert('Vui lòng nhập ít nhất một URL');
-                return;
-            }
-
-            const lines = urlsText.split('\n').filter(line => line.trim());
-            const lastUrl = lines[lines.length - 1];
-
-            const chapterMatch = lastUrl.match(/chuong-(\d+)/);
-            if (!chapterMatch) {
-                alert('Không tìm thấy số chương trong URL');
-                return;
-            }
-
-            const chapterNum = parseInt(chapterMatch[1]);
-            const baseUrl = lastUrl.replace(/chuong-\d+\/?$/, '');
-
-            let newUrls = '';
-            for (let i = 1; i <= 3; i++) {
-                const nextChapter = chapterNum + i;
-                newUrls += `${baseUrl}chuong-${nextChapter}/\n`;
-            }
-
-            document.getElementById('urls').value = urlsText + '\n' + newUrls.trim();
-        }
-
-        function replaceWithNextUrls() {
-            const urlsText = document.getElementById('urls').value.trim();
-            if (!urlsText) {
-                alert('Vui lòng nhập ít nhất một URL');
-                return;
-            }
-
-            const lines = urlsText.split('\n').filter(line => line.trim());
-            const lastUrl = lines[lines.length - 1];
-
-            const chapterMatch = lastUrl.match(/chuong-(\d+)/);
-            if (!chapterMatch) {
-                alert('Không tìm thấy số chương trong URL');
-                return;
-            }
-
-            const chapterNum = parseInt(chapterMatch[1]);
-            const baseUrl = lastUrl.replace(/chuong-\d+\/?$/, '');
-
-            let newUrls = '';
-            for (let i = 1; i <= 4; i++) {
-                const nextChapter = chapterNum + i;
-                newUrls += `${baseUrl}chuong-${nextChapter}/\n`;
-            }
-
-            document.getElementById('urls').value = newUrls.trim();
-        }
-
-        function clearUrls() {
-            document.getElementById('urls').value = '';
-        }
-
-        function clearInput() {
-            document.getElementById('input').value = '';
-        }
-        
-        function saveAsText() {
-            const content = document.getElementById('output').value;
-            saveTextAsFile(content, 'noidung.txt');
-        }
-
-        async function addToCollection() {
-            const content = document.getElementById('output').value;
-            if (!content) return;
-
-            const collection = document.getElementById('collection');
-            if (collection.value) {
-                collection.value += '\n\n';
-            }
-            collection.value += content;
+        for (let i = 0; i < urls.length; i++) {
+            const progress = ((i + 1) / urls.length) * 100;
+            progressBarFill.style.width = `${progress}%`;
+            progressText.textContent = `Đang xử lý URL ${i + 1}/${urls.length}`;
 
             try {
-                await navigator.clipboard.writeText(content);
-                alert('Đã thêm vào tổng hợp và sao chép vào clipboard!');
-            } catch (err) {
-                alert('Đã thêm vào tổng hợp! (Không thể sao chép vào clipboard)');
-            }
-        }
+                const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(urls[i].trim());
+                const response = await fetch(proxyUrl);
+                if (!response.ok) throw new Error('Network error');
 
-        async function copyToClipboard() {
-            const content = document.getElementById('collection').value;
-            if (!content) {
-                alert('Không có nội dung để sao chép');
-                return;
-            }
+                const data = await response.json();
+                document.getElementById('input').value = data.contents;
+                await extractContent();
 
-            try {
-                await navigator.clipboard.writeText(content);
-                alert('Đã sao chép toàn bộ nội dung vào clipboard!');
-            } catch (err) {
-                alert('Không thể sao chép vào clipboard: ' + err);
-            }
-        }
-
-        function clearCollection() {
-            if (confirm('Bạn có chắc muốn xóa toàn bộ nội dung tổng hợp?')) {
-                document.getElementById('collection').value = '';
-            }
-        }
-
-        function saveTextAsFile(content, filename) {
-            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        }
-
-        // TTS Functions
-        let currentUtterance = null;
-
-        function speakText() {
-            if (!('speechSynthesis' in window)) {
-                alert('Trình duyệt của bạn không hỗ trợ Text-to-Speech. Vui lòng dùng Chrome trên Android và cài đặt giọng tiếng Việt.');
-                return;
-            }
-
-            const text = document.getElementById('collection').value;
-            if (!text) {
-                alert('Không có nội dung để đọc');
-                return;
-            }
-
-            // Dừng nếu đang đọc
-            speechSynthesis.cancel();
-
-            // Chia văn bản thành các đoạn (dựa trên \n\n)
-            const paragraphs = text.split('\n\n').filter(p => p.trim());
-            const textarea = document.getElementById('collection');
-            let currentIndex = 0;
-
-            function speakNextParagraph() {
-                if (currentIndex >= paragraphs.length) {
-                    textarea.setSelectionRange(0, 0); // Xóa highlight khi xong
-                    return;
+                const content = document.getElementById('output').value;
+                if (content) {
+                    allContent += content + '\n\n';
+                    successCount++;
                 }
-
-                // Tính vị trí bắt đầu và kết thúc của đoạn trong textarea
-                const startPos = text.indexOf(paragraphs[currentIndex]);
-                const endPos = startPos + paragraphs[currentIndex].length;
-
-                // Highlight đoạn đang đọc
-                textarea.focus();
-                textarea.setSelectionRange(startPos, endPos);
-                textarea.scrollTop = textarea.scrollHeight * (startPos / text.length); // Cuộn đến đoạn đang đọc
-
-                // Tạo utterance cho đoạn hiện tại
-                currentUtterance = new SpeechSynthesisUtterance(paragraphs[currentIndex]);
-                currentUtterance.lang = 'vi-VN'; // Đặt ngôn ngữ tiếng Việt
-                currentUtterance.rate = 1.0; // Tốc độ đọc (có thể tùy chỉnh)
-                currentUtterance.onend = () => {
-                    currentIndex++;
-                    speakNextParagraph(); // Đọc đoạn tiếp theo khi xong
-                };
-
-                speechSynthesis.speak(currentUtterance);
-            }
-
-            speakNextParagraph();
-        }
-
-        function stopSpeaking() {
-            if ('speechSynthesis' in window) {
-                speechSynthesis.cancel();
-                const textarea = document.getElementById('collection');
-                textarea.setSelectionRange(0, 0); // Xóa highlight
+            } catch (error) {
+                console.error(`Lỗi khi lấy URL ${urls[i]}:`, error);
+                failCount++;
             }
         }
+
+        document.getElementById('collection').value = allContent.trim();
+        progressContainer.style.display = 'none';
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Hoàn thành!',
+            text: `Thành công: ${successCount} URL\nThất bại: ${failCount} URL`,
+        });
+    }
+
+    function processText(text) {
+        text = text.replace(/(?<![\.\?\!])\n/g, ' ');
+        text = text.replace(/([\.\?\!]|\.{3})\s+/g, '$1\n');
+        text = text.replace(/^\s*([-–])\s*/gm, '\n$1 ');
+        text = text.replace(/([""'])\s*\n/g, '$1\n');
+        return text;
+    }
+
+    async function extractContent() {
+        const html = document.getElementById('input').value;
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        const truyenTitle = doc.querySelector('.truyen-title');
+        const chapterTitle = doc.querySelector('.chapter-title');
+        let title = '';
+        if (truyenTitle && chapterTitle) {
+            const fullTitle = `${truyenTitle.textContent.trim()} - ${chapterTitle.textContent.trim()}`;
+            title = `${fullTitle.toUpperCase()}\n\n`;
+        }
+
+        let chapterContent = doc.querySelector('#chapter-c');
+        if (!chapterContent) {
+            chapterContent = doc.querySelector('div');
+            if (!chapterContent) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: 'Không tìm thấy nội dung chính',
+                });
+                return;
+            }
+        }
+
+        const ads = chapterContent.querySelectorAll('.ads-responsive, .ads-chapter-bottom-lien-quan');
+        ads.forEach(ad => ad.remove());
+
+        const brs = chapterContent.querySelectorAll('br');
+        brs.forEach(br => br.parentNode.replaceChild(doc.createTextNode('\n'), br));
+
+        let content = '';
+        const walk = document.createTreeWalker(
+            chapterContent,
+            NodeFilter.SHOW_TEXT,
+            { acceptNode: () => NodeFilter.FILTER_ACCEPT }
+        );
+
+        let node;
+        while (node = walk.nextNode()) {
+            let text = node.textContent;
+            if (text.trim()) {
+                content += text;
+                if (node.parentNode.tagName === 'P') {
+                    content += '\n\n';
+                }
+            }
+        }
+
+        content = processText(content)
+            .replace(/\n\s+\n/g, '\n\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+
+        document.getElementById('output').value = title + content;
+        return title + content;
+    }
+
+    function generateNextUrls() {
+        const urlsText = document.getElementById('urls').value.trim();
+        if (!urlsText) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Cảnh báo',
+                text: 'Vui lòng nhập ít nhất một URL',
+            });
+            return;
+        }
+
+        const lines = urlsText.split('\n').filter(line => line.trim());
+        const lastUrl = lines[lines.length - 1];
+
+        const chapterMatch = lastUrl.match(/chuong-(\d+)/);
+        if (!chapterMatch) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi',
+                text: 'Không tìm thấy số chương trong URL',
+            });
+            return;
+        }
+
+        const chapterNum = parseInt(chapterMatch[1]);
+        const baseUrl = lastUrl.replace(/chuong-\d+\/?$/, '');
+
+        let newUrls = '';
+        for (let i = 1; i <= 3; i++) {
+            const nextChapter = chapterNum + i;
+            newUrls += `${baseUrl}chuong-${nextChapter}/\n`;
+        }
+
+        document.getElementById('urls').value = urlsText + '\n' + newUrls.trim();
+    }
+
+    function replaceWithNextUrls() {
+        const urlsText = document.getElementById('urls').value.trim();
+        if (!urlsText) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Cảnh báo',
+                text: 'Vui lòng nhập ít nhất một URL',
+            });
+            return;
+        }
+        const lines = urlsText.split('\n').filter(line => line.trim());
+        if (lines.length < 4) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Cảnh báo',
+                text: 'Cần ít nhất 4 URL để thay thế',
+            });
+            return;
+        }
+        const lastUrl = lines[lines.length - 1];
+        const chapterMatch = lastUrl.match(/chuong-(\d+)/);
+        if (!chapterMatch) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi',
+                text: 'Không tìm thấy số chương trong URL',
+            });
+            return;
+        }
+        const chapterNum = parseInt(chapterMatch[1]);
+        const baseUrl = lastUrl.replace(/chuong-\d+\/?$/, '');
+        let newUrls = '';
+        for (let i = 1; i <= 4; i++) {
+            const nextChapter = chapterNum + i;
+            newUrls += `${baseUrl}chuong-${nextChapter}/\n`;
+        }
+        document.getElementById('urls').value = newUrls.trim();
+    }
+
+    function clearUrls() {
+        document.getElementById('urls').value = '';
+    }
+
+    function clearInput() {
+        document.getElementById('input').value = '';
+    }
+
+    function saveAsText() {
+        const content = document.getElementById('output').value;
+        saveTextAsFile(content, 'noidung.txt');
+    }
+
+    async function addToCollection() {
+        const content = await extractContent();
+        document.getElementById('collection').value += content + '\n\n';
+        copyToClipboard();
+    }
+
+    async function copyToClipboard() {
+        const text = document.getElementById('collection').value;
+        try {
+            await navigator.clipboard.writeText(text);
+            Swal.fire({
+                icon: 'success',
+                title: 'Đã sao chép!',
+                text: 'Nội dung đã được sao chép vào clipboard',
+            });
+        } catch (err) {
+            console.error('Không thể sao chép vào clipboard:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi',
+                text: 'Không thể sao chép vào clipboard',
+            });
+        }
+    }
+
+    function clearCollection() {
+        document.getElementById('collection').value = '';
+    }
+
+    function saveTextAsFile(content, filename) {
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // TTS Functions
+    let currentUtterance = null;
+
+    function speakText() {
+        const text = document.getElementById('collection').value;
+        if (!text) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Cảnh báo',
+                text: 'Vui lòng nhập nội dung để đọc',
+            });
+            return;
+        }
+
+        const rate = document.getElementById('rate').value;
+        const pitch = document.getElementById('pitch').value;
+        const voiceName = document.getElementById('voice').value;
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = rate;
+        utterance.pitch = pitch;
+
+        const voices = speechSynthesis.getVoices();
+        const selectedVoice = voices.find(voice => voice.name === voiceName);
+        if (selectedVoice) {
+            utterance.voice = selectedVoice;
+        }
+
+        speechSynthesis.speak(utterance);
+        currentUtterance = utterance;
+    }
+
+    function stopSpeaking() {
+        if (currentUtterance) {
+            speechSynthesis.cancel();
+            currentUtterance = null;
+        }
+    }
+
+    // Populate voice list
+    let voices = [];
+    function populateVoiceList() {
+        voices = speechSynthesis.getVoices();
+        const voiceSelect = document.getElementById('voice');
+        voices.forEach(voice => {
+            const option = document.createElement('option');
+            option.textContent = `${voice.name} (${voice.lang})`;
+            option.value = voice.name;
+            voiceSelect.appendChild(option);
+        });
+    }
+
+    populateVoiceList();
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = populateVoiceList;
+    }
     </script>
 </body>
 </html>
