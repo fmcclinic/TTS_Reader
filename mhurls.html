@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mã hóa / GMURL</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 20px auto;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 95%;
+            min-height: 150px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            resize: vertical; /* Allow vertical resizing */
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 15px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .password-section {
+            margin-bottom: 15px;
+            /* Hidden by default */
+            display: none;
+            border: 1px dashed #ccc;
+            padding: 15px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .password-section label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        .password-section input[type="password"] {
+            width: 95%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background-color: #e2e3e5;
+            color: #383d41;
+            border: 1px solid #d6d8db;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js" integrity="sha512-a+SUDuwNzXDvz4XrIcXHuCf089/iJAoN4lmrXJg18XnduKK6YlDHNRalv4yd1N40OKI80tFidF+rqTFKGPoWFQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+<div class="container">
+    <h2>MH / GMURLs</h2>
+
+    <label for="urlInput">Nhập:</label>
+    <textarea id="urlInput" placeholder="https://example.com&#10;https://google.com"></textarea>
+
+    <div id="passwordSection" class="password-section">
+        <label for="passwordInput">KTC:</label>
+        <input type="password" id="passwordInput" placeholder="Nhập K...">
+    </div>
+
+    <button id="actionButton">MH / GM</button>
+
+    <div id="statusMessage" class="status" style="display: none;"></div>
+</div>
+
+<script>
+    const urlInput = document.getElementById('urlInput');
+    const passwordSection = document.getElementById('passwordSection');
+    const passwordInput = document.getElementById('passwordInput');
+    const actionButton = document.getElementById('actionButton');
+    const statusMessage = document.getElementById('statusMessage');
+
+    // State: false = plain text, true = encrypted text
+    let isEncrypted = false;
+    // State: true = password input is currently shown and waiting for confirmation click
+    let awaitingPasswordConfirmation = false;
+
+    // Function to show status messages
+    function showStatus(message, type = 'info') {
+        statusMessage.textContent = message;
+        statusMessage.className = `status ${type}`; // Reset classes and add new type
+        statusMessage.style.display = 'block';
+    }
+
+    // Function to hide status messages
+    function hideStatus() {
+        statusMessage.style.display = 'none';
+        statusMessage.textContent = '';
+        statusMessage.className = 'status';
+    }
+
+    // Main button click handler
+    actionButton.addEventListener('click', () => {
+        const content = urlInput.value.trim();
+        const password = passwordInput.value;
+
+        // --- Step 1: Handle showing/hiding password input ---
+
+        // If password input is hidden, show it and wait for the next click
+        if (!awaitingPasswordConfirmation) {
+            if (!content) {
+                showStatus('Vui lòng nhập nội dung vào ô URLs trước.', 'error');
+                return;
+            }
+            passwordSection.style.display = 'block';
+            passwordInput.focus();
+            awaitingPasswordConfirmation = true;
+            hideStatus(); // Clear previous status
+            showStatus('Nhập khóa truy cập và nhấn nút một lần nữa để thực hiện.', 'info');
+            // Optionally change button text here if desired
+            // actionButton.textContent = 'Xác nhận';
+            return; // Wait for the next click
+        }
+
+        // --- Step 2: Handle encryption/decryption after password input ---
+
+        // If password input was already visible, proceed with action
+        if (!password) {
+            showStatus('Vui lòng nhập Khóa truy cập.', 'error');
+            passwordInput.focus();
+            return;
+        }
+
+        // Hide password section immediately after getting the password
+        passwordSection.style.display = 'none';
+        awaitingPasswordConfirmation = false;
+        // Reset button text if it was changed
+        // actionButton.textContent = 'Mã hóa / Giải mã';
+
+        if (isEncrypted) {
+            // --- Try to Decrypt ---
+            try {
+                const bytes = CryptoJS.AES.decrypt(content, password);
+                const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+
+                if (decryptedText) {
+                    urlInput.value = decryptedText;
+                    isEncrypted = false;
+                    showStatus('GMTC!', 'success');
+                } else {
+                    // Decryption succeeded technically but resulted in empty string
+                    // This usually means WRONG PASSWORD
+                    throw new Error("Decryption resulted in empty data (likely wrong key)");
+                }
+            } catch (e) {
+                console.error("Decryption error:", e);
+                showStatus('Giải mã thất bại! Sai khóa truy cập hoặc dữ liệu lỗi.', 'error');
+                // Keep content as is (still encrypted)
+                isEncrypted = true; // Ensure state remains encrypted
+            }
+        } else {
+            // --- Encrypt ---
+            try {
+                const encryptedText = CryptoJS.AES.encrypt(content, password).toString();
+                urlInput.value = encryptedText;
+                isEncrypted = true;
+                showStatus('Mã hóa thành công!', 'success');
+            } catch (e) {
+                 console.error("Encryption error:", e);
+                 showStatus('Mã hóa thất bại! Đã có lỗi xảy ra.', 'error');
+                 isEncrypted = false; // Ensure state remains plain
+            }
+        }
+
+        // Clear password field for security after attempt
+        passwordInput.value = '';
+    });
+
+    // Optional: Hide status message when user starts typing again in textarea or password field
+    urlInput.addEventListener('input', hideStatus);
+    passwordInput.addEventListener('input', hideStatus);
+
+</script>
+
+</body>
+</html>
