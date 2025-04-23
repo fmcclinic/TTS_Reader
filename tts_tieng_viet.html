@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trình Đọc Văn Bản (TTS)</title>
+    <title>Trình Đọc Văn Bản (TTS) Tối Ưu</title>
     <script src="https://code.responsivevoice.org/responsivevoice.js?key=30xj8le1"></script>
     <style>
         /* Reset cơ bản */
@@ -34,62 +34,59 @@
             border-radius: 10px;
             display: flex;
             flex-direction: column;
-            gap: 20px; /* Giảm nhẹ gap */
+            gap: 20px;
         }
 
         .title-bar {
              display: flex;
-             justify-content: space-between; /* Đẩy tiêu đề và nút cài đặt ra 2 bên */
+             justify-content: space-between;
              align-items: center;
-             margin-bottom: 5px; /* Thêm khoảng cách dưới */
+             margin-bottom: 5px;
         }
 
         h2 {
-            /* text-align: center; Bỏ căn giữa vì đã có flexbox */
             color: #0056b3;
-            flex-grow: 1; /* Cho phép tiêu đề chiếm không gian còn lại */
-            text-align: center; /* Căn giữa lại tiêu đề */
+            flex-grow: 1;
+            text-align: center;
             margin-right: 10px; /* Khoảng cách với nút cài đặt */
+            font-size: 1.5rem; /* Tăng kích thước tiêu đề */
         }
 
         #settingsToggle {
             background: none;
             border: none;
-            font-size: 1.8rem; /* Kích thước icon */
+            font-size: 1.8rem;
             cursor: pointer;
             padding: 5px;
-            line-height: 1; /* Đảm bảo icon căn chỉnh tốt */
-            color: #6c757d; /* Màu icon xám */
+            line-height: 1;
+            color: #6c757d;
             transition: color 0.2s ease, transform 0.2s ease;
         }
         #settingsToggle:hover {
-            color: #0056b3; /* Màu khi hover */
-            transform: rotate(45deg); /* Hiệu ứng xoay nhẹ */
+            color: #0056b3;
+            transform: rotate(45deg);
         }
 
         /* Phần cài đặt ẩn/hiện */
         .settings-panel {
-            padding: 20px;
+            padding: 0px; /* Bắt đầu không có padding */
             background: #f8f9fa;
             border-radius: 8px;
-            border: 1px solid #e9ecef;
+            border: 1px solid transparent; /* Bắt đầu trong suốt */
             display: flex;
             flex-direction: column;
             gap: 15px;
-            overflow: hidden; /* Quan trọng cho transition */
-            transition: max-height 0.4s ease-out, padding 0.4s ease-out, opacity 0.4s ease-out;
-            max-height: 0; /* Bắt đầu ẩn */
+            overflow: hidden;
+            transition: max-height 0.4s ease-out, padding 0.4s ease-out, opacity 0.4s ease-out, border-color 0.4s ease-out;
+            max-height: 0;
             opacity: 0;
-            padding-top: 0; /* Bắt đầu ẩn */
-            padding-bottom: 0; /* Bắt đầu ẩn */
-            border-width: 0; /* Bắt đầu ẩn */
         }
 
         .settings-panel.visible {
-            max-height: 500px; /* Chiều cao đủ lớn để chứa nội dung */
+            max-height: 1000px; /* Đủ lớn để chứa nội dung */
             opacity: 1;
-            padding: 20px; /* Khôi phục padding */
-             border-width: 1px; /* Khôi phục border */
+            padding: 20px;
+            border-color: #e9ecef; /* Hiện border khi mở */
         }
 
 
@@ -102,7 +99,7 @@
         .control-group label {
             font-weight: bold;
             color: #495057;
-            font-size: 0.9rem; /* Giảm nhẹ font label trong settings */
+            font-size: 0.9rem;
         }
 
         select, input[type="range"] {
@@ -132,7 +129,7 @@
         /* Textarea */
         textarea#textToSpeak {
             width: 100%;
-            height: 180px;
+            height: 300px;
             padding: 12px;
             border: 1px solid #ced4da;
             border-radius: 6px;
@@ -154,7 +151,7 @@
         }
 
         /* Style nút */
-        button:not(#settingsToggle) { /* Áp dụng cho các nút trừ nút cài đặt */
+        button:not(#settingsToggle) {
             padding: 12px 15px;
             border: none;
             border-radius: 25px;
@@ -188,6 +185,7 @@
             text-align: center;
             transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
             border: 1px solid transparent;
+            min-height: 46px; /* Giữ chiều cao ổn định */
         }
 
         #status.info {
@@ -208,14 +206,13 @@
 
         /* Responsive */
          @media (min-width: 600px) {
-             /* Điều chỉnh control group trong settings panel khi màn hình lớn */
             .settings-panel.visible .control-group {
                  flex-direction: row;
                  align-items: center;
                  gap: 10px;
             }
              .settings-panel.visible .control-group label {
-                width: auto; /* Hoặc đặt width cố định nếu muốn */
+                width: auto;
             }
             .settings-panel.visible select,
             .settings-panel.visible input[type="range"] {
@@ -260,8 +257,8 @@
         </div>
 
         <div>
-            <label for="textToSpeak" style="font-weight: bold; display: block; margin-bottom: 5px;">Nhập văn bản cần đọc:</label>
-            <textarea id="textToSpeak" placeholder="Nhập hoặc dán văn bản vào đây..."></textarea>
+            <label for="textToSpeak" style="font-weight: bold; display: block; margin-bottom: 5px;">Nhập hoặc dán văn bản:</label>
+            <textarea id="textToSpeak" placeholder="Nhập văn bản ở đây. Sau khi dán, con trỏ sẽ tự động lên đầu. Bạn cũng có thể nhấp vào vị trí bất kỳ hoặc chọn đoạn văn bản rồi nhấn 'Đọc' để bắt đầu từ đó."></textarea>
         </div>
 
         <div class="button-group">
@@ -275,6 +272,7 @@
     </div>
 
     <script>
+        // --- DOM Elements ---
         const voiceSelect = document.getElementById('voiceSelect');
         const rateInput = document.getElementById('rate');
         const pitchInput = document.getElementById('pitch');
@@ -285,53 +283,100 @@
         const settingsToggle = document.getElementById('settingsToggle');
         const settingsPanel = document.getElementById('settingsPanel');
 
-
-        // --- Event Listeners ---
-
-        // Toggle hiển thị panel cài đặt
-        settingsToggle.addEventListener('click', () => {
-            settingsPanel.classList.toggle('visible');
-        });
-
-        // Cập nhật giá trị hiển thị của các thanh trượt
-        rateInput.addEventListener('input', function() {
-            rateValueSpan.textContent = parseFloat(this.value).toFixed(1);
-        });
-
-        pitchInput.addEventListener('input', function() {
-            pitchValueSpan.textContent = parseFloat(this.value).toFixed(1);
-        });
-
+        // --- Constants for localStorage ---
+        const LS_VOICE_KEY = 'ttsVoice';
+        const LS_RATE_KEY = 'ttsRate';
+        const LS_PITCH_KEY = 'ttsPitch';
 
         // --- Functions ---
 
-        // Hàm cập nhật trạng thái
+        /**
+         * Loads settings from localStorage and applies them.
+         */
+        function loadSettings() {
+            const savedVoice = localStorage.getItem(LS_VOICE_KEY);
+            const savedRate = localStorage.getItem(LS_RATE_KEY);
+            const savedPitch = localStorage.getItem(LS_PITCH_KEY);
+
+            if (savedVoice) {
+                voiceSelect.value = savedVoice;
+            }
+            // Set rate input and display
+            rateInput.value = savedRate || '1'; // Default to '1' if null
+            rateValueSpan.textContent = parseFloat(rateInput.value).toFixed(1);
+
+            // Set pitch input and display
+            pitchInput.value = savedPitch || '1'; // Default to '1' if null
+            pitchValueSpan.textContent = parseFloat(pitchInput.value).toFixed(1);
+
+             updateStatus('Sẵn sàng', 'info'); // Initial status after loading
+        }
+
+        /**
+         * Saves a specific setting to localStorage.
+         * @param {string} key - The localStorage key.
+         * @param {string} value - The value to save.
+         */
+        function saveSetting(key, value) {
+            localStorage.setItem(key, value);
+        }
+
+        /**
+         * Updates the status message display.
+         * @param {string} message - The message text.
+         * @param {('info'|'success'|'error')} type - The type of message.
+         */
         function updateStatus(message, type = 'info') {
             statusDiv.textContent = message;
-            statusDiv.className = 'status ' + type; // Đặt lại class
+            statusDiv.className = 'status ' + type;
         }
 
-        // Hàm lọc bỏ ký tự không mong muốn
+        /**
+         * Filters unwanted characters and normalizes whitespace.
+         * @param {string} text - The input text.
+         * @returns {string} - The filtered text.
+         */
         function filterText(text) {
-            // Bỏ các ký tự: ( ) { } [ ] * # ^ < >
-            return text.replace(/[\(\)\{\}\[\]\*#\^<>]/g, '');
+            if (!text) return '';
+            // Remove specific characters: ( ) { } [ ] * # ^ < > ~ | _
+            const filtered = text.replace(/[\(\)\{\}\[\]\*#\^<>~|_]+/g, '');
+            // Replace multiple whitespace characters (including newlines) with a single space
+            const normalized = filtered.replace(/\s+/g, ' ').trim();
+            return normalized;
         }
 
-        // Hàm bắt đầu đọc
+        /**
+         * Starts speaking the text from the current cursor position or selection start.
+         */
         function startSpeak() {
+            const startPos = textToSpeakArea.selectionStart >= 0 ? textToSpeakArea.selectionStart : 0;
             const originalText = textToSpeakArea.value;
+
             if (!originalText.trim()) {
                  updateStatus('Vui lòng nhập văn bản để đọc', 'error');
                  return;
             }
 
-            const filteredText = filterText(originalText);
+            const textToRead = originalText.substring(startPos);
+
+            if (!textToRead.trim()) {
+                 // Check if cursor is at the very beginning of non-empty text area
+                 if (startPos === 0 && originalText.trim()) {
+                      // Let it proceed to read the whole text in this case
+                 } else {
+                    updateStatus('Con trỏ đang ở cuối văn bản hoặc không có gì để đọc từ vị trí này.', 'info');
+                    return;
+                 }
+            }
+
+
+            const filteredText = filterText(textToRead || originalText); // Read full text if textToRead is empty but original isn't
             const voice = voiceSelect.value;
             const rate = rateInput.value;
             const pitch = pitchInput.value;
 
             if (responsiveVoice.isPlaying()) {
-                responsiveVoice.cancel();
+                responsiveVoice.cancel(); // Stop current speech before starting new
             }
 
             updateStatus('Đang chuẩn bị...', 'info');
@@ -354,7 +399,7 @@
             });
         }
 
-        // Hàm tạm dừng
+        /** Pauses the speech. */
         function pauseSpeak() {
             if (responsiveVoice.isPlaying()) {
                 responsiveVoice.pause();
@@ -364,35 +409,67 @@
             }
         }
 
-        // Hàm tiếp tục
+        /** Resumes the paused speech. */
         function resumeSpeak() {
+             const wasPlaying = responsiveVoice.isPlaying();
              responsiveVoice.resume();
-             // Không chắc chắn API có phản hồi trạng thái ngay lập tức không
-             // Cập nhật UI dựa trên giả định resume thành công nếu không có lỗi
-             if (responsiveVoice.isPlaying()){
-                updateStatus('Đang đọc tiếp...', 'info');
-             } else {
-                 // Có thể nó chưa bao giờ pause hoặc đã stop
-                 // Kiểm tra xem có text không và gọi startSpeak nếu cần? Hoặc không làm gì cả.
-                 // updateStatus('Không thể tiếp tục', 'info');
+             if(responsiveVoice.isPlaying()){
+                 updateStatus('Đang đọc tiếp...', 'info');
+             } else if (!wasPlaying) {
+                  updateStatus('Không có gì để tiếp tục', 'info');
              }
         }
 
-        // Hàm dừng hẳn
+        /** Stops the speech completely. */
         function stopSpeak() {
             responsiveVoice.cancel();
             updateStatus('Đã dừng đọc', 'info');
         }
 
 
+        // --- Event Listeners ---
+
+        // Toggle settings panel visibility
+        settingsToggle.addEventListener('click', () => {
+            settingsPanel.classList.toggle('visible');
+            // Optional: Change icon based on visibility
+            // settingsToggle.textContent = settingsPanel.classList.contains('visible') ? '✕' : '⚙️';
+        });
+
+        // Update and save settings on change
+        voiceSelect.addEventListener('change', function() {
+            saveSetting(LS_VOICE_KEY, this.value);
+        });
+
+        rateInput.addEventListener('input', function() {
+            const value = parseFloat(this.value).toFixed(1);
+            rateValueSpan.textContent = value;
+            saveSetting(LS_RATE_KEY, this.value);
+        });
+
+        pitchInput.addEventListener('input', function() {
+            const value = parseFloat(this.value).toFixed(1);
+            pitchValueSpan.textContent = value;
+            saveSetting(LS_PITCH_KEY, this.value);
+        });
+
+        // Listener for the 'paste' event on the textarea
+        textToSpeakArea.addEventListener('paste', (event) => {
+            // Use setTimeout to wait for the paste operation to complete
+            setTimeout(() => {
+                // Set cursor to the beginning
+                textToSpeakArea.selectionStart = 0;
+                textToSpeakArea.selectionEnd = 0;
+                // Scroll textarea to the top
+                textToSpeakArea.scrollTop = 0;
+                updateStatus('Đã dán văn bản. Sẵn sàng đọc từ đầu.', 'info');
+            }, 10); // Small delay (10 milliseconds)
+        });
+
+
         // --- Initialization ---
-
-        // Cập nhật giá trị ban đầu của slider
-        rateValueSpan.textContent = parseFloat(rateInput.value).toFixed(1);
-        pitchValueSpan.textContent = parseFloat(pitchInput.value).toFixed(1);
-
-         // Thông báo trạng thái ban đầu
-         updateStatus('Sẵn sàng', 'info');
+        // Load saved settings when the page loads
+        document.addEventListener('DOMContentLoaded', loadSettings);
 
     </script>
 </body>
