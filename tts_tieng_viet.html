@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trình Đọc Văn Bản (TTS)</title>
+    <script src="https://code.responsivevoice.org/responsivevoice.js?key=30xj8le1"></script>
+    <style>
+        /* Reset cơ bản */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 15px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 650px; /* Tăng nhẹ max-width */
+            padding: 25px;
+            background-color: #ffffff;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px; /* Tăng khoảng cách giữa các phần */
+        }
+
+        h2 {
+            text-align: center;
+            color: #0056b3; /* Màu tiêu đề */
+        }
+
+        /* Phần điều khiển */
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column; /* Xếp label trên input/select */
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-weight: bold;
+            color: #495057;
+        }
+
+        select, input[type="range"] {
+            width: 100%; /* Chiếm toàn bộ chiều rộng */
+            padding: 8px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            background-color: #fff;
+        }
+        select {
+            cursor: pointer;
+        }
+
+        input[type="range"] {
+            cursor: pointer;
+            padding: 0; /* Bỏ padding mặc định của range */
+        }
+
+        .slider-value {
+            font-weight: bold;
+            color: #007bff;
+            margin-left: 5px; /* Khoảng cách nhỏ với label */
+        }
+
+        /* Textarea */
+        textarea#textToSpeak {
+            width: 100%;
+            height: 180px; /* Tăng chiều cao */
+            padding: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 1rem;
+            resize: vertical; /* Cho phép thay đổi chiều cao theo chiều dọc */
+            line-height: 1.5;
+        }
+        textarea#textToSpeak:focus {
+            outline: none;
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
+
+        /* Nhóm nút */
+        .button-group {
+            display: grid; /* Sử dụng Grid cho layout nút */
+            grid-template-columns: repeat(2, 1fr); /* 2 cột bằng nhau */
+            gap: 10px; /* Khoảng cách giữa các nút */
+        }
+
+        /* Style nút */
+        button {
+            padding: 12px 15px;
+            border: none;
+            border-radius: 25px; /* Bo tròn nhiều hơn */
+            background-image: linear-gradient(to right, #007bff, #0056b3);
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            text-align: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-image 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            background-image: linear-gradient(to right, #0069d9, #004ca0); /* Đổi màu khi hover */
+        }
+
+        button:active {
+            transform: translateY(0px);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        /* Trạng thái */
+        #status {
+            margin-top: 10px; /* Giảm khoảng cách trên */
+            padding: 12px 15px;
+            border-radius: 6px;
+            font-weight: 500; /* Giảm độ đậm */
+            text-align: center;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+            border: 1px solid transparent; /* Thêm border để giữ layout ổn định */
+        }
+
+        #status.info {
+            background-color: #e2f3ff;
+            color: #004085;
+            border-color: #b8daff;
+        }
+        #status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+        #status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+
+        /* Responsive */
+        @media (min-width: 600px) {
+            .controls {
+                flex-direction: row; /* Chuyển điều khiển thành hàng ngang */
+                align-items: center; /* Căn giữa theo chiều dọc */
+                gap: 20px;
+            }
+            .control-group {
+                 flex-direction: row; /* Label và input/select cùng hàng */
+                 align-items: center;
+                 gap: 10px;
+            }
+             .control-group label {
+                width: auto; /* Reset width label */
+            }
+            select, input[type="range"] {
+                width: auto; /* Để các control co giãn */
+                flex-grow: 1; /* Cho phép input/select co giãn */
+            }
+             input[type="range"] {
+                min-width: 100px; /* Chiều rộng tối thiểu cho slider */
+            }
+
+            .button-group {
+                grid-template-columns: repeat(4, 1fr); /* 4 cột trên màn hình lớn */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Trình Đọc Văn Bản (TTS)</h2>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="voiceSelect">Giọng đọc:</label>
+                <select id="voiceSelect">
+                    <option value="Vietnamese Female">Giọng Nữ</option>
+                    <option value="Vietnamese Male">Giọng Nam</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="rate">Tốc độ:</label>
+                <input type="range" id="rate" min="0.5" max="1.5" step="0.1" value="1">
+                <span id="rateValue" class="slider-value">1.0</span>
+            </div>
+
+            <div class="control-group">
+                <label for="pitch">Âm vực:</label>
+                <input type="range" id="pitch" min="0.5" max="2" step="0.1" value="1">
+                <span id="pitchValue" class="slider-value">1.0</span>
+            </div>
+        </div>
+
+        <div>
+            <label for="textToSpeak" style="font-weight: bold; display: block; margin-bottom: 5px;">Nhập văn bản cần đọc:</label>
+            <textarea id="textToSpeak" placeholder="Nhập hoặc dán văn bản vào đây...">Xin chào! Đây là trình đọc văn bản tiếng Việt. Hãy nhập nội dung bạn muốn nghe.</textarea>
+        </div>
+
+        <div class="button-group">
+            <button onclick="startSpeak()">Đọc</button>
+            <button onclick="pauseSpeak()">Tạm dừng</button>
+            <button onclick="resumeSpeak()">Tiếp tục</button>
+            <button onclick="stopSpeak()">Dừng</button>
+        </div>
+
+        <div id="status" class="status">Sẵn sàng đọc</div>
+    </div>
+
+    <script>
+        const voiceSelect = document.getElementById('voiceSelect');
+        const rateInput = document.getElementById('rate');
+        const pitchInput = document.getElementById('pitch');
+        const rateValueSpan = document.getElementById('rateValue');
+        const pitchValueSpan = document.getElementById('pitchValue');
+        const textToSpeakArea = document.getElementById('textToSpeak');
+        const statusDiv = document.getElementById('status');
+
+        // Cập nhật giá trị hiển thị của các thanh trượt khi thay đổi
+        rateInput.addEventListener('input', function() {
+            rateValueSpan.textContent = parseFloat(this.value).toFixed(1);
+        });
+
+        pitchInput.addEventListener('input', function() {
+            pitchValueSpan.textContent = parseFloat(this.value).toFixed(1);
+        });
+
+        // Hàm cập nhật trạng thái
+        function updateStatus(message, type = 'info') { // Mặc định là 'info'
+            statusDiv.textContent = message;
+            // Xóa các class trạng thái cũ trước khi thêm class mới
+            statusDiv.classList.remove('info', 'success', 'error');
+            statusDiv.classList.add(type); // Thêm class tương ứng ('info', 'success', 'error')
+        }
+
+        // Hàm lọc bỏ ký tự không mong muốn
+        function filterText(text) {
+            // Bỏ các ký tự: ( ) { } [ ] * # ^ < >
+            // Bạn có thể thêm hoặc bớt ký tự trong dấu ngoặc vuông []
+            return text.replace(/[\(\)\{\}\[\]\*#\^<>]/g, '');
+        }
+
+        function startSpeak() {
+            const originalText = textToSpeakArea.value;
+            if (!originalText.trim()) {
+                 updateStatus('Vui lòng nhập văn bản để đọc', 'error');
+                 return;
+            }
+
+            const filteredText = filterText(originalText); // Lọc văn bản
+            const voice = voiceSelect.value;
+            const rate = rateInput.value;
+            const pitch = pitchInput.value;
+
+            if (responsiveVoice.isPlaying()) {
+                responsiveVoice.cancel(); // Dừng nếu đang đọc
+            }
+
+            updateStatus('Đang chuẩn bị...', 'info');
+
+            responsiveVoice.speak(filteredText, voice, {
+                rate: parseFloat(rate),
+                pitch: parseFloat(pitch),
+                onstart: () => updateStatus('Đang đọc...', 'info'),
+                onend: () => updateStatus('Đã đọc xong', 'success'),
+                onerror: (err) => {
+                    console.error("Lỗi ResponsiveVoice:", err);
+                    // Cố gắng cung cấp thông báo lỗi thân thiện hơn
+                    let errorMessage = 'Đã xảy ra lỗi khi đọc.';
+                    if (err && err.message) {
+                        errorMessage += ` Chi tiết: ${err.message}`;
+                    } else if (typeof err === 'string') {
+                         errorMessage += ` Chi tiết: ${err}`;
+                    }
+                    updateStatus(errorMessage, 'error');
+                }
+            });
+        }
+
+        function pauseSpeak() {
+            if (responsiveVoice.isPlaying()) {
+                responsiveVoice.pause();
+                updateStatus('Đã tạm dừng', 'info');
+            }
+        }
+
+        function resumeSpeak() {
+             // Kiểm tra xem có đang tạm dừng không (API không có hàm isPaused)
+             // Cách đơn giản là cứ gọi resume và cập nhật trạng thái
+             responsiveVoice.resume();
+             // Có thể kiểm tra isPlaying sau một khoảng trễ nhỏ nếu cần chính xác hơn
+             // nhưng thường thì cập nhật ngay là đủ
+             if (responsiveVoice.isPlaying()){ // Kiểm tra lại sau khi gọi resume
+                updateStatus('Đang đọc tiếp...', 'info');
+             } else {
+                // Có thể đang không ở trạng thái pause hoặc đã dừng hẳn
+                // Không làm gì hoặc thông báo nhẹ nhàng
+             }
+        }
+
+        function stopSpeak() {
+            responsiveVoice.cancel();
+            updateStatus('Đã dừng đọc', 'info');
+        }
+
+        // Cập nhật giá trị ban đầu của slider
+        rateValueSpan.textContent = parseFloat(rateInput.value).toFixed(1);
+        pitchValueSpan.textContent = parseFloat(pitchInput.value).toFixed(1);
+
+         // Thông báo trạng thái ban đầu
+         updateStatus('Sẵn sàng đọc', 'info');
+
+    </script>
+</body>
+</html>
