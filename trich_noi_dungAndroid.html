@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
 
     <style>
-        /* CSS giữ nguyên như trước */
+        /* CSS giữ nguyên */
         body {
             font-family: Arial, sans-serif;
             max-width: 1200px;
@@ -40,7 +40,7 @@
             margin-top: 25px;
         }
 
-        div {
+        div:not(#debugLogContainer) { /* Loại trừ debugLogContainer khỏi style chung này nếu cần */
             background: white;
             padding: 20px;
             border-radius: 10px;
@@ -57,7 +57,7 @@
             font-family: 'Courier New', monospace;
             margin-bottom: 10px;
             font-size: 16px;
-            box-sizing: border-box; /* Thêm để padding không làm tăng kích thước */
+            box-sizing: border-box;
         }
 
         button {
@@ -68,7 +68,7 @@
             border-radius: 5px;
             cursor: pointer;
             margin-right: 10px;
-            margin-bottom: 10px; /* Giữ margin bottom cho nút */
+            margin-bottom: 10px;
             transition: background-color 0.3s;
             font-size: 1em;
         }
@@ -81,72 +81,50 @@
             transform: translateY(1px);
         }
         button:disabled {
-            background-color: #9e9e9e; /* Màu xám cho nút bị vô hiệu hóa */
+            background-color: #9e9e9e;
             cursor: not-allowed;
         }
 
-
-        /* Các màu sắc nút cụ thể */
         button[onclick="fetchMultipleUrls()"] { background-color: #2196F3; }
         button[onclick="generateNextUrls()"] { background-color: #9C27B0; }
         button[onclick="replaceWithNextUrls()"] { background-color: #FF5722; }
         button[onclick="showUrlHistory()"] { background-color: #FF9800; }
         button[onclick*="clearUrls"] { background-color: #f44336; }
         button[onclick="copyToClipboard()"] { background-color: #4CAF50; }
-        /* Nút TTS mới */
-        button#readButton { background-color: #673AB7; /* Tím */ }
+        button#readButton { background-color: #673AB7; }
         button#readButton:disabled { background-color: #b39ddb; }
-        button#stopButton { background-color: #E91E63; /* Hồng */ }
+        button#stopButton { background-color: #E91E63; }
         button#stopButton:disabled { background-color: #f48fb1; }
 
+        #progress-container { /* giữ nguyên */ }
+        #progress-bar { /* giữ nguyên */ }
+        #progress-bar-fill { /* giữ nguyên */ }
+        #progress-text { /* giữ nguyên */ }
 
-        #progress-container {
-            display: none;
-            background-color: #e0e0e0;
-            border-radius: 5px;
-            margin-bottom: 10px;
+        #debugLogContainer {
+            margin-top: 20px;
             padding: 10px;
-        }
-
-        #progress-bar {
-            width: 100%;
-            height: 20px;
-            background-color: #ddd;
+            background-color: #222;
+            color: #0f0;
             border-radius: 5px;
-            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
-        #progress-bar-fill {
-            width: 0%;
-            height: 100%;
-            background-color: #4CAF50;
+        #debugLog {
+            height: 150px;
+            overflow-y: scroll;
+            border: 1px solid #444;
+            background-color: #111;
+            padding: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
+            white-space: pre-wrap;
+            color: #0f0; /* Màu chữ xanh lá cho log */
         }
+        #debugLog .warn { color: #ff0; /* Màu vàng cho warning */ }
+        #debugLog .error { color: #f00; /* Màu đỏ cho error */ }
 
-        #progress-text {
-            text-align: center;
-            margin-top: 5px;
-        }
 
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-
-            button {
-                width: 100%;
-                margin-bottom: 5px; /* Giảm margin bottom trên mobile */
-                padding: 15px 30px;
-                font-size: 1.1em;
-                min-width: 100px;
-                min-height: 48px;
-            }
-            #collection {
-                margin-top: 10px;
-            }
-            textarea {
-                font-size: 16px;
-            }
-        }
+        @media (max-width: 768px) { /* giữ nguyên */ }
     </style>
 </head>
 <body>
@@ -178,13 +156,55 @@
         <p><small>Lưu ý: Để đọc được tiếng Việt, thiết bị Android của bạn cần cài đặt và chọn gói giọng nói tiếng Việt trong cài đặt Text-to-Speech.</small></p>
     </div>
 
+    <div id="debugLogContainer">
+        <h4>Log gỡ lỗi TTS:</h4>
+        <div id="debugLog"></div>
+    </div>
+
     <script>
+    // --- Phần ghi log ra div ---
+    let logDivElement = null; // Sẽ được gán sau khi DOM tải xong
+    const originalConsoleLog = console.log;
+    const originalConsoleWarn = console.warn;
+    const originalConsoleError = console.error;
+
+    function appendToLogDiv(type, args) {
+        if (logDivElement) {
+            const message = Array.from(args).map(arg => {
+                if (arg instanceof Error) return arg.stack || arg.message;
+                if (typeof arg === 'object') return JSON.stringify(arg, null, 2);
+                return String(arg);
+            }).join(' ');
+            const entry = document.createElement('div');
+            entry.className = type.toLowerCase(); // log, warn, error
+            entry.textContent = `[${type}] ${new Date().toLocaleTimeString()}: ${message}`;
+            logDivElement.appendChild(entry);
+            logDivElement.scrollTop = logDivElement.scrollHeight;
+        }
+    }
+
+    console.log = function(...args) {
+        originalConsoleLog.apply(console, args);
+        appendToLogDiv('LOG', args);
+    };
+    console.warn = function(...args) {
+        originalConsoleWarn.apply(console, args);
+        appendToLogDiv('WARN', args);
+    };
+    console.error = function(...args) {
+        originalConsoleError.apply(console, args);
+        appendToLogDiv('ERROR', args);
+    };
+    // --- Kết thúc phần ghi log ra div ---
+
+
     const URLS_STORAGE_KEY = 'savedStoryUrls';
     const HISTORY_STORAGE_KEY = 'urlHistory';
     const MAX_HISTORY_SIZE = 50;
 
     let currentUtterance = null;
     let voices = [];
+    let ttsVoicesLoadedAtLeastOnce = false;
 
     function populateVoiceList() {
         if (typeof speechSynthesis === 'undefined') {
@@ -192,18 +212,20 @@
             return;
         }
         voices = speechSynthesis.getVoices();
-        console.log("Cập nhật danh sách giọng đọc. Số lượng giọng đọc:", voices.length);
-        voices.forEach((v, index) => {
-            console.log(`Giọng ${index}: Tên=${v.name}, Ngôn ngữ=${v.lang}, Mặc định=${v.default}, Local=${v.localService}`);
-        });
-        // Nếu danh sách giọng đọc ban đầu trống, sự kiện onvoiceschanged sẽ cập nhật lại
-        if (voices.length === 0 && speechSynthesis.onvoiceschanged === null) {
-             speechSynthesis.onvoiceschanged = populateVoiceList; // Gán lại nếu chưa có
+        if (voices.length > 0) {
+            ttsVoicesLoadedAtLeastOnce = true;
         }
+        console.log("Sự kiện onvoiceschanged/populateVoiceList được gọi. Số lượng giọng đọc:", voices.length, ". Đã tải giọng ít nhất một lần:", ttsVoicesLoadedAtLeastOnce);
+        voices.forEach((v, index) => {
+            console.log(`Giọng ${index}: Tên=${v.name}, Ngôn ngữ=${v.lang}, Mặc định=${v.default}, Local=${v.localService}, URI=${v.voiceURI}`);
+        });
     }
 
 
     document.addEventListener('DOMContentLoaded', () => {
+        logDivElement = document.getElementById('debugLog'); // Gán phần tử div cho log
+        console.log("Sự kiện DOMContentLoaded.");
+
         const savedUrls = localStorage.getItem(URLS_STORAGE_KEY);
         if (savedUrls) {
             document.getElementById('urls').value = savedUrls;
@@ -213,28 +235,31 @@
             localStorage.setItem(URLS_STORAGE_KEY, urlsTextarea.value);
         });
 
+        const readButton = document.getElementById('readButton');
+        const stopButton = document.getElementById('stopButton');
+
         if (typeof speechSynthesis !== 'undefined') {
-            // Sự kiện onvoiceschanged có thể được kích hoạt nhiều lần khi danh sách giọng đọc thay đổi
-            speechSynthesis.onvoiceschanged = populateVoiceList;
+            console.log("Trình duyệt có hỗ trợ speechSynthesis.");
+            speechSynthesis.onvoiceschanged = () => {
+                console.log("Sự kiện onvoiceschanged của speechSynthesis được kích hoạt.");
+                populateVoiceList();
+            };
             populateVoiceList(); // Gọi lần đầu để thử lấy danh sách giọng đọc
         } else {
-             console.warn('Text-to-Speech không được hỗ trợ trên trình duyệt này.');
-             // Vô hiệu hóa các nút TTS nếu không được hỗ trợ
-             if(document.getElementById('readButton')) document.getElementById('readButton').disabled = true;
-             if(document.getElementById('stopButton')) document.getElementById('stopButton').disabled = true;
+             console.warn('Text-to-Speech không được hỗ trợ trên trình duyệt này. Vô hiệu hóa các nút TTS.');
+             if(readButton) readButton.disabled = true;
+             if(stopButton) stopButton.disabled = true;
         }
 
-
-        if (document.getElementById('stopButton')) {
-             document.getElementById('stopButton').disabled = true;
-        }
-        if (document.getElementById('readButton') && typeof speechSynthesis === 'undefined') {
-             document.getElementById('readButton').disabled = true;
-        } else if (document.getElementById('readButton')) {
-             document.getElementById('readButton').disabled = false;
+        if (stopButton) stopButton.disabled = true;
+        if (readButton && typeof speechSynthesis === 'undefined') {
+             readButton.disabled = true;
+        } else if (readButton) {
+             readButton.disabled = false;
         }
     });
 
+    // ... (các hàm getHistory, addToHistory, showUrlHistory, fetchMultipleUrls, processText, extractContent, generateNextUrls, replaceWithNextUrls, clearUrls, copyToClipboard giữ nguyên như trước)
     function getHistory() {
         const historyJson = localStorage.getItem(HISTORY_STORAGE_KEY);
         return historyJson ? JSON.parse(historyJson) : [];
@@ -275,7 +300,6 @@
     }
 
     async function fetchMultipleUrls() {
-        // ... (giữ nguyên hàm này) ...
         const urlsText = document.getElementById('urls').value;
         const urls = urlsText.split('\n').filter(url => url.trim());
 
@@ -356,7 +380,6 @@
     }
 
     function processText(text) {
-        // ... (giữ nguyên hàm này) ...
         text = text.replace(/\r\n/g, '\n');
         text = text.replace(/[ \t]*\n[ \t]*/g, '\n');
         text = text.replace(/\n{3,}/g, '\n\n');
@@ -369,7 +392,6 @@
     }
 
     async function extractContent(html) {
-        // ... (giữ nguyên hàm này) ...
         if (!html) return '';
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
@@ -454,7 +476,6 @@
 
 
     function generateNextUrls() {
-        // ... (giữ nguyên hàm này) ...
         const urlsText = document.getElementById('urls').value.trim();
         if (!urlsText) {
             Swal.fire('Cảnh báo', 'Vui lòng nhập ít nhất một URL.', 'warning');
@@ -482,7 +503,6 @@
     }
 
     function replaceWithNextUrls() {
-        // ... (giữ nguyên hàm này) ...
         const urlsText = document.getElementById('urls').value.trim();
         if (!urlsText) {
             Swal.fire('Cảnh báo', 'Vui lòng nhập ít nhất một URL.', 'warning');
@@ -516,7 +536,6 @@
     }
 
     async function copyToClipboard() {
-        // ... (giữ nguyên hàm này) ...
         const text = document.getElementById('collection').value;
         if (!text.trim()) {
             Swal.fire('Thông báo', 'Không có nội dung để sao chép.', 'info');
@@ -537,19 +556,35 @@
 
     // --- Chức năng TTS (Text-to-Speech) ---
     function readContent() {
+        console.log("Hàm readContent() được gọi.");
+        const readButton = document.getElementById('readButton');
+        const stopButton = document.getElementById('stopButton');
+
         if (typeof speechSynthesis === 'undefined') {
             Swal.fire('Lỗi TTS', 'Trình duyệt của bạn không hỗ trợ đọc văn bản (Text-to-Speech).', 'error');
+            console.error("speechSynthesis không được hỗ trợ.");
             return;
         }
 
-        // Dừng việc đọc hiện tại (nếu có)
+        if (!ttsVoicesLoadedAtLeastOnce && voices.length === 0) {
+            console.warn("Danh sách giọng đọc chưa được tải (onvoiceschanged có thể chưa kích hoạt hoặc không tìm thấy giọng đọc). Đang thử populate lại.");
+            // populateVoiceList(); // Thử gọi lại, nhưng cẩn thận vòng lặp vô hạn nếu onvoiceschanged không hoạt động
+            // Quyết định: Dựa vào onvoiceschanged đã được thiết lập. Nếu vẫn trống là có vấn đề.
+            Swal.fire('Lỗi TTS', 'Danh sách giọng đọc chưa sẵn sàng. Vui lòng đợi giây lát và thử lại. Nếu lỗi tiếp diễn, hãy kiểm tra log gỡ lỗi.', 'warning');
+            if(readButton) readButton.disabled = false; // Cho phép người dùng thử lại
+            if(stopButton) stopButton.disabled = true;
+            return;
+        }
+        
         if (speechSynthesis.speaking || speechSynthesis.pending) {
+            console.log("Đang có nội dung khác được đọc hoặc chờ đọc, hủy bỏ...");
             speechSynthesis.cancel();
         }
 
         const text = document.getElementById('collection').value;
         if (!text.trim()) {
             Swal.fire('Thông báo', 'Không có nội dung để đọc.', 'info');
+            console.log("Không có nội dung để đọc.");
             return;
         }
 
@@ -557,10 +592,7 @@
         currentUtterance.lang = 'vi-VN';
 
         console.log("Đang tìm giọng đọc tiếng Việt. Tổng số giọng đọc có sẵn:", voices.length);
-        if (voices.length === 0) {
-            console.warn("Danh sách giọng đọc hiện tại trống. Có thể onvoiceschanged chưa được kích hoạt hoặc không có giọng đọc nào được cài đặt.");
-        }
-
+        
         const vietnameseVoice = voices.find(voice => voice.lang === 'vi-VN' && voice.localService);
         const backupVietnameseVoice = voices.find(voice => voice.lang === 'vi-VN');
 
@@ -571,54 +603,61 @@
             currentUtterance.voice = backupVietnameseVoice;
             console.log("Đã chọn giọng đọc tiếng Việt (backup):", backupVietnameseVoice.name, "| Ngôn ngữ:", backupVietnameseVoice.lang);
         } else {
-            console.warn("Không tìm thấy giọng đọc tiếng Việt cụ thể trong danh sách. Sẽ dựa vào cài đặt mặc định của trình duyệt cho 'vi-VN'. Lỗi 'synthesis-failed' có thể xảy ra nếu không có giọng đọc tiếng Việt nào được cấu hình trên hệ thống.");
+            console.warn("Không tìm thấy giọng đọc tiếng Việt cụ thể trong danh sách đã tải. Sẽ dựa vào cài đặt mặc định của trình duyệt cho 'vi-VN'.");
+            if(voices.length > 0) { // Nếu có giọng đọc nhưng không có tiếng Việt
+                 console.warn("Có các giọng đọc khác nhưng không có 'vi-VN'. Lỗi 'synthesis-failed' rất có thể xảy ra.");
+            } else { // Nếu không có giọng đọc nào cả
+                 console.error("Không có giọng đọc nào được trình duyệt cung cấp. Kiểm tra cài đặt TTS hệ thống và trình duyệt.");
+            }
         }
+        
+        // alert("Chuẩn bị đọc. Giọng được chọn: " + (currentUtterance.voice ? currentUtterance.voice.name : "Mặc định cho vi-VN"));
 
-        const readButton = document.getElementById('readButton');
-        const stopButton = document.getElementById('stopButton');
 
         currentUtterance.onstart = () => {
-            console.log("Bắt đầu đọc TTS.");
+            console.log("Sự kiện onstart: Bắt đầu đọc TTS.");
             if(readButton) readButton.disabled = true;
             if(stopButton) stopButton.disabled = false;
         };
 
         currentUtterance.onend = () => {
-            console.log("Kết thúc đọc TTS.");
+            console.log("Sự kiện onend: Kết thúc đọc TTS.");
             if(readButton) readButton.disabled = false;
             if(stopButton) stopButton.disabled = true;
             currentUtterance = null;
         };
 
         currentUtterance.onerror = (event) => {
-            console.error('Lỗi TTS:', event.error, event);
-            Swal.fire('Lỗi đọc TTS', `Đã xảy ra lỗi: ${event.error}. Vui lòng kiểm tra cài đặt TTS trên thiết bị và đảm bảo có giọng đọc tiếng Việt.`, 'error');
+            console.error('Sự kiện onerror TTS:', event.error, event);
+            Swal.fire('Lỗi đọc TTS', `Đã xảy ra lỗi: ${event.error}. Vui lòng kiểm tra cài đặt TTS trên thiết bị, đảm bảo có giọng đọc tiếng Việt và xem log gỡ lỗi.`, 'error');
             if(readButton) readButton.disabled = false;
             if(stopButton) stopButton.disabled = true;
             currentUtterance = null;
         };
         
-        // Kích hoạt nút dừng và vô hiệu hóa nút đọc ngay trước khi bắt đầu
         if(readButton) readButton.disabled = true;
         if(stopButton) stopButton.disabled = false;
         
-        console.log("Chuẩn bị đọc văn bản:", text.substring(0, 100) + "..."); // Log một phần văn bản
+        console.log("Gọi speechSynthesis.speak() với văn bản:", text.substring(0, 70) + "...");
         speechSynthesis.speak(currentUtterance);
     }
 
     function stopReading() {
+        console.log("Hàm stopReading() được gọi.");
+        const readButton = document.getElementById('readButton');
+        const stopButton = document.getElementById('stopButton');
         if (typeof speechSynthesis === 'undefined') {
             return;
         }
         if (speechSynthesis.speaking || speechSynthesis.pending) {
-            console.log("Yêu cầu dừng đọc TTS.");
-            speechSynthesis.cancel(); // Sự kiện onend hoặc onerror của utterance sẽ xử lý việc cập nhật nút
+            console.log("Yêu cầu dừng đọc TTS thông qua cancel().");
+            speechSynthesis.cancel(); 
         }
-        // Đảm bảo các nút được đặt lại nếu cancel() không kích hoạt onend/onerror ngay lập tức
-        const readButton = document.getElementById('readButton');
-        const stopButton = document.getElementById('stopButton');
+        // Đặt lại trạng thái nút ngay lập tức để đảm bảo giao diện người dùng phản hồi
+        // onend/onerror sẽ được gọi sau đó nhưng có thể không đủ nhanh hoặc bị lỡ
         if(readButton) readButton.disabled = false;
         if(stopButton) stopButton.disabled = true;
+        currentUtterance = null; // Đảm bảo utterance hiện tại được dọn dẹp
     }
 
     </script>
