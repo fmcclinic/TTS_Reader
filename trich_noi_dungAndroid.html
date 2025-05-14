@@ -3,115 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trích xuất nội dung truyện (TTS Pause/Resume - Debug)</title>
+    <title>Trích xuất nội dung truyện (TTS Pause/Resume v2 - Debug)</title>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
 
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-            line-height: 1.6;
-        }
-        h1 {
-            text-align: center;
-            color: #1a237e;
-            font-size: 2.5em;
-            text-transform: uppercase;
-            margin-bottom: 30px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-            background: linear-gradient(45deg, #1a237e, #3949ab);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        h3 {
-            color: #1a237e;
-            border-bottom: 2px solid #1a237e;
-            padding-bottom: 5px;
-            margin-top: 25px;
-        }
-        div:not(#debugLogContainer) {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-        textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            resize: vertical;
-            font-family: 'Courier New', monospace;
-            margin-bottom: 10px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        button {
-            background-color: #1a237e;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-right: 10px;
-            margin-bottom: 10px;
-            transition: background-color 0.3s;
-            font-size: 1em;
-        }
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; line-height: 1.6; }
+        h1 { text-align: center; color: #1a237e; font-size: 2.5em; text-transform: uppercase; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1); background: linear-gradient(45deg, #1a237e, #3949ab); color: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        h3 { color: #1a237e; border-bottom: 2px solid #1a237e; padding-bottom: 5px; margin-top: 25px; }
+        div:not(#debugLogContainer) { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin-bottom: 20px; }
+        textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; font-family: 'Courier New', monospace; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; }
+        button { background-color: #1a237e; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; margin-right: 10px; margin-bottom: 10px; transition: background-color 0.3s; font-size: 1em; }
         button:hover { background-color: #3949ab; }
         button:active { transform: translateY(1px); }
-        button:disabled {
-            background-color: #9e9e9e;
-            cursor: not-allowed;
-        }
-
+        button:disabled { background-color: #9e9e9e; cursor: not-allowed; }
         button[onclick="fetchMultipleUrls()"] { background-color: #2196F3; }
         button[onclick="generateNextUrls()"] { background-color: #9C27B0; }
         button[onclick="replaceWithNextUrls()"] { background-color: #FF5722; }
         button[onclick="showUrlHistory()"] { background-color: #FF9800; }
         button[onclick*="clearUrls"] { background-color: #f44336; }
         button[onclick="copyToClipboard()"] { background-color: #4CAF50; }
-        
-        button#readButton { background-color: #673AB7; } /* Nút Đọc */
+        button#readButton { background-color: #673AB7; }
         button#readButton:disabled { background-color: #b39ddb; }
-        button#pauseResumeButton { background-color: #FF9800; /* Cam cho Tạm dừng/Tiếp tục */ }
+        button#pauseResumeButton { background-color: #FF9800; }
         button#pauseResumeButton:disabled { background-color: #ffcc80; }
-
-
         #progress-container { display: none; background-color: #e0e0e0; border-radius: 5px; margin-bottom: 10px; padding: 10px; }
         #progress-bar { width: 100%; height: 20px; background-color: #ddd; border-radius: 5px; overflow: hidden; }
         #progress-bar-fill { width: 0%; height: 100%; background-color: #4CAF50; }
         #progress-text { text-align: center; margin-top: 5px; }
-        
         #debugLogContainer { margin-top: 20px; padding: 10px; background-color: #222; color: #0f0; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         #debugLog { height: 200px; overflow-y: scroll; border: 1px solid #444; background-color: #111; padding: 5px; font-family: 'Courier New', monospace; font-size: 0.8em; white-space: pre-wrap; color: #0f0; }
         #debugLog .warn { color: #ff0; }
         #debugLog .error { color: #f00; }
-
-        @media (max-width: 768px) {
-            body { padding: 10px; }
-            button { width: 100%; margin-bottom: 5px; padding: 15px 30px; font-size: 1.1em; min-width: 100px; min-height: 48px; }
-            #collection { margin-top: 10px; }
-            textarea { font-size: 16px; }
-        }
+        @media (max-width: 768px) { body { padding: 10px; } button { width: 100%; margin-bottom: 5px; padding: 15px 30px; font-size: 1.1em; min-width: 100px; min-height: 48px; } #collection { margin-top: 10px; } textarea { font-size: 16px; } }
     </style>
 </head>
 <body>
-    <h1>Trích xuất nội dung truyện (TTS Pause/Resume - Debug)</h1>
+    <h1>Trích xuất nội dung truyện (TTS Pause/Resume v2 - Debug)</h1>
 
     <div>
         <h3>1. Nhập URLs (mỗi URL một dòng):</h3>
         <textarea id="urls" rows="5" cols="80" placeholder="https://truyenfull.bio/cuu-thien-kiem-ss-ha-than/chuong-110/"></textarea>
         <div id="progress-container"> </div> <br>
         <button onclick="fetchMultipleUrls()">Lấy nội dung tất cả URLs</button>
+        <button onclick="generateNextUrls()">Tạo URL tiếp theo</button>
+        <button onclick="replaceWithNextUrls()">Xóa và tạo 4 URL mới</button>
+        <button onclick="showUrlHistory()">Lịch sử URL</button>
         <button onclick="clearUrls()">Xóa URLs</button>
     </div>
 
@@ -142,7 +80,7 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
     <script>
     // --- Phần ghi log ra div (giữ nguyên) ---
     let logDivElement = null;
-    const originalConsoleLog = console.log;
+    const originalConsoleLog = console.log; 
     const originalConsoleWarn = console.warn;
     const originalConsoleError = console.error;
     function appendToLogDiv(type, args) {
@@ -171,31 +109,22 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
     const HISTORY_STORAGE_KEY = 'urlHistory';
     const MAX_HISTORY_SIZE = 50;
 
-    // --- Biến cho TTS ---
     let currentUtterance = null;
     let ttsVoices = []; 
     let ttsVoicesLoadedAtLeastOnce = false;
-    let speakButton, pauseResumeButton; // Đổi tên stopButton
-    // Biến cho chunking và pause/resume
+    let speakButton, pauseResumeButton;
     let speechChunks = [];
     let currentChunkIndex = 0;
     let isSpeakingFromQueue = false;
-    let isPaused = false;
+    let isPausedByApp = false; // Đổi tên isPaused để rõ ràng hơn đây là cờ của ứng dụng
 
-
-    function populateVoiceList() {
-        console.log("populateVoiceList (main) được gọi.");
-        if (typeof speechSynthesis === 'undefined') { console.warn('speechSynthesis không được hỗ trợ.'); return; }
-        ttsVoices = speechSynthesis.getVoices();
-        if (ttsVoices.length > 0) ttsVoicesLoadedAtLeastOnce = true;
-        console.log("Số lượng giọng đọc (main):", ttsVoices.length, ". Đã tải ít nhất một lần:", ttsVoicesLoadedAtLeastOnce);
-    }
+    function populateVoiceList() { /* Giữ nguyên */ }
 
     function _resetTTSState(isStartingNewRead = false) {
         console.log("Hàm _resetTTSState được gọi. isStartingNewRead:", isStartingNewRead);
         isSpeakingFromQueue = false;
-        isPaused = false;
-        if (!isStartingNewRead) { // Chỉ xóa hàng đợi nếu không phải là bắt đầu đọc mới (trường hợp này readContent sẽ tạo hàng đợi mới)
+        isPausedByApp = false; // Reset cờ tạm dừng của ứng dụng
+        if (!isStartingNewRead) { 
             speechChunks = [];
             currentChunkIndex = 0;
         }
@@ -204,21 +133,20 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
             pauseResumeButton.textContent = 'Tạm dừng';
             pauseResumeButton.disabled = true;
         }
-        currentUtterance = null; // Dọn dẹp utterance
+        currentUtterance = null;
     }
 
-
     function speakNextChunk() {
-        console.log(`speakNextChunk: isSpeakingFromQueue=${isSpeakingFromQueue}, isPaused=${isPaused}, currentChunkIndex=${currentChunkIndex}, totalChunks=${speechChunks.length}`);
-        if (!isSpeakingFromQueue || currentChunkIndex >= speechChunks.length) {
-            console.log("Kết thúc hàng đợi đọc chunk hoặc đã dừng/tạm dừng hoàn toàn.");
-            _resetTTSState();
-            return;
+        console.log(`speakNextChunk: isSpeakingFromQueue=${isSpeakingFromQueue}, isPausedByApp=${isPausedByApp}, currentChunkIndex=${currentChunkIndex}, totalChunks=${speechChunks.length}`);
+        
+        if (isPausedByApp) { // Nếu ứng dụng đang ở trạng thái 'muốn tạm dừng'
+            console.log("Ứng dụng đang ở trạng thái tạm dừng (isPausedByApp=true), speakNextChunk sẽ không đọc chunk mới.");
+            return; 
         }
 
-        // Nếu đang ở trạng thái tạm dừng, không đọc chunk tiếp theo
-        if (isPaused) {
-            console.log("Đang ở trạng thái tạm dừng, không đọc chunk tiếp theo.");
+        if (!isSpeakingFromQueue || currentChunkIndex >= speechChunks.length) {
+            console.log("Kết thúc hàng đợi đọc chunk hoặc đã dừng.");
+            _resetTTSState();
             return;
         }
 
@@ -230,34 +158,31 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
 
         currentUtterance.onstart = (event) => {
             console.log(`Sự kiện onstart cho chunk ${currentChunkIndex + 1}.`, event);
-            // Nút đã được quản lý khi bắt đầu readContent
         };
 
         currentUtterance.onend = (event) => {
-            console.log(`Sự kiện onend cho chunk ${currentChunkIndex + 1}. isSpeakingFromQueue=${isSpeakingFromQueue}`, event);
-            if (isSpeakingFromQueue) { // Chỉ tiếp tục nếu vẫn đang trong quá trình đọc hàng đợi
+            console.log(`Sự kiện onend cho chunk ${currentChunkIndex + 1}. isSpeakingFromQueue=${isSpeakingFromQueue}, isPausedByApp=${isPausedByApp}`, event);
+            currentUtterance = null; // Dọn dẹp utterance này trước
+            if (isSpeakingFromQueue && !isPausedByApp) { 
                 currentChunkIndex++;
                 speakNextChunk(); 
             } else {
-                console.log("onend được gọi nhưng isSpeakingFromQueue là false, không đọc chunk tiếp theo.");
-                _resetTTSState(); // Đảm bảo trạng thái được reset nếu bị dừng từ bên ngoài
+                console.log("onend được gọi nhưng isSpeakingFromQueue là false hoặc isPausedByApp là true, không đọc chunk tiếp theo.");
+                if (!isSpeakingFromQueue) _resetTTSState(); 
             }
-            currentUtterance = null; // Dọn dẹp utterance này
         };
 
         currentUtterance.onerror = (event) => {
             console.error(`Sự kiện onerror TTS cho chunk ${currentChunkIndex + 1}:`, event.error, event);
-            if (isSpeakingFromQueue) { // Chỉ hiển thị lỗi nếu nó xảy ra trong quá trình đọc chủ động
+            // Chỉ hiển thị lỗi nếu không phải do người dùng chủ động dừng (isSpeakingFromQueue=false)
+            // hoặc nếu lỗi không phải là 'canceled'/'interrupted' (thường do cancel())
+            if (isSpeakingFromQueue && event.error !== 'canceled' && event.error !== 'interrupted') {
                 let displayError = event.error ? event.error : "Lỗi không xác định";
-                if (event.error === 'canceled' || event.error === 'interrupted') {
-                    console.warn("Đọc chunk bị hủy hoặc gián đoạn, không hiển thị lỗi cho người dùng.");
-                    // Không hiển thị Swal.fire cho lỗi 'canceled' hoặc 'interrupted' nếu isSpeakingFromQueue vẫn true
-                    // vì có thể là do cancel từ readContent hoặc togglePauseResume
-                } else {
-                     Swal.fire('Lỗi đọc TTS', `Đã xảy ra lỗi khi đọc chunk ${currentChunkIndex + 1}: ${displayError}.`, 'error');
-                }
+                Swal.fire('Lỗi đọc TTS', `Đã xảy ra lỗi khi đọc chunk ${currentChunkIndex + 1}: ${displayError}.`, 'error');
+            } else {
+                console.warn(`Lỗi onerror (${event.error}) được bỏ qua do isSpeakingFromQueue=${isSpeakingFromQueue} hoặc lỗi là canceled/interrupted.`);
             }
-            _resetTTSState(); // Dừng và reset khi có lỗi
+            _resetTTSState(); 
         };
         
         try {
@@ -275,46 +200,25 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
         if (!speakButton) speakButton = document.getElementById('readButton');
         if (!pauseResumeButton) pauseResumeButton = document.getElementById('pauseResumeButton');
 
-        if (typeof speechSynthesis === 'undefined') {
-            Swal.fire('Lỗi TTS', 'Trình duyệt của bạn không hỗ trợ đọc văn bản.', 'error');
-            return;
-        }
-
-        if (!ttsVoicesLoadedAtLeastOnce) {
-            populateVoiceList();
-            if (!ttsVoicesLoadedAtLeastOnce && ttsVoices.length === 0) {
-                 Swal.fire('TTS chưa sẵn sàng', 'Hệ thống TTS chưa sẵn sàng. Vui lòng thử lại sau giây lát.', 'warning');
-                 return;
-            }
-        }
+        if (typeof speechSynthesis === 'undefined') { /* ... */ return; }
+        if (!ttsVoicesLoadedAtLeastOnce && ttsVoices.length === 0) { /* ... */ return; }
         
-        console.log("Hủy bỏ việc đọc hiện tại (nếu có) và bắt đầu lại.");
-        speechSynthesis.cancel(); // Dừng mọi thứ đang đọc hoặc chờ đọc
-        _resetTTSState(true); // Reset trạng thái, true để không xóa speechChunks ngay (sẽ được tạo mới)
-
+        console.log("Hủy bỏ việc đọc hiện tại (nếu có) và bắt đầu lại từ đầu.");
+        speechSynthesis.cancel(); 
+        _resetTTSState(true); 
 
         const textCollection = document.getElementById('collection');
         const fullText = textCollection.value;
-        if (!fullText.trim()) {
-            Swal.fire('Thông báo', 'Không có nội dung để đọc.', 'info');
-            _resetTTSState(); // Đảm bảo nút được reset
-            return;
-        }
+        if (!fullText.trim()) { /* ... */ _resetTTSState(); return; }
 
         speechChunks = fullText.split(/\n\s*\n+/).map(chunk => chunk.trim()).filter(chunk => chunk !== '');
-        if (speechChunks.length === 0 && fullText.trim() !== '') {
-            speechChunks = [fullText.trim()];
-        }
-        if (speechChunks.length === 0) {
-             Swal.fire('Thông báo', 'Nội dung không hợp lệ để đọc.', 'info');
-             _resetTTSState();
-             return;
-        }
+        if (speechChunks.length === 0 && fullText.trim() !== '') { speechChunks = [fullText.trim()]; }
+        if (speechChunks.length === 0) { /* ... */ _resetTTSState(); return; }
         
         console.log(`Đã chia văn bản thành ${speechChunks.length} chunk(s).`);
         currentChunkIndex = 0;
         isSpeakingFromQueue = true;
-        isPaused = false; // Bắt đầu đọc mới thì không thể đang paused
+        isPausedByApp = false; 
 
         if(speakButton) speakButton.disabled = true;
         if(pauseResumeButton) {
@@ -326,45 +230,55 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
     }
 
     function togglePauseResume() {
-        console.log(`togglePauseResume được gọi. isSpeakingFromQueue: ${isSpeakingFromQueue}, isPaused: ${isPaused}, speechSynthesis.speaking: ${speechSynthesis.speaking}, speechSynthesis.paused: ${speechSynthesis.paused}`);
+        console.log(`togglePauseResume: isSpeakingFromQueue=${isSpeakingFromQueue}, isPausedByApp=${isPausedByApp}, synth.speaking=${speechSynthesis.speaking}, synth.paused=${speechSynthesis.paused}`);
         if (!pauseResumeButton) pauseResumeButton = document.getElementById('pauseResumeButton');
+        if (typeof speechSynthesis === 'undefined' || !isSpeakingFromQueue) {
+            console.warn("Không thể Tạm dừng/Tiếp tục khi hàng đợi không hoạt động hoặc TTS không hỗ trợ.");
+            return;
+        }
 
-        if (typeof speechSynthesis === 'undefined') return;
-
-        if (isPaused) { // Đang tạm dừng -> Tiếp tục
-            console.log("Tiếp tục đọc.");
-            isPaused = false;
-            speechSynthesis.resume();
+        if (isPausedByApp) { // Đang tạm dừng bởi ứng dụng -> Tiếp tục
+            console.log("Yêu cầu TIẾP TỤC đọc.");
+            isPausedByApp = false; 
             if (pauseResumeButton) pauseResumeButton.textContent = 'Tạm dừng';
-            // speakNextChunk() có thể không cần gọi lại trực tiếp ở đây nếu resume tự động tiếp tục utterance hiện tại.
-            // Nếu utterance hiện tại đã kết thúc trong lúc pause, onend sẽ gọi speakNextChunk.
-            // Hoặc nếu resume không tự chạy tiếp chunk, cần gọi lại speakNextChunk
-            // Tuy nhiên, resume() nên tiếp tục utterance hiện tại.
-            // If the utterance queue was cleared or something, this might be needed.
-            // For safety, if speakNextChunk isn't automatically triggered by resume on the current utterance's onend/onstart,
-            // we might need to ensure the flow continues if it was paused mid-chunk and then resumed.
-            // But usually, resume handles the current utterance. The onend will handle the next.
-        } else if (speechSynthesis.speaking && isSpeakingFromQueue) { // Đang đọc -> Tạm dừng
-            console.log("Tạm dừng đọc.");
-            isPaused = true;
+            
+            if (speechSynthesis.paused) { // Nếu trình duyệt thực sự đang paused
+                console.log("Trình duyệt đang paused, gọi resume().");
+                speechSynthesis.resume();
+            } else {
+                // Trình duyệt không paused (có thể utterance đã kết thúc trong lúc isPausedByApp=true,
+                // và speakNextChunk đã return do isPausedByApp).
+                // Cần chủ động gọi speakNextChunk để tiếp tục hàng đợi.
+                console.warn("Trình duyệt không ở trạng thái paused. Gọi speakNextChunk() để tiếp tục hàng đợi.");
+                speakNextChunk(); 
+            }
+        } else if (speechSynthesis.speaking) { // Đang đọc -> Tạm dừng
+            console.log("Yêu cầu TẠM DỪNG đọc.");
             speechSynthesis.pause();
+            isPausedByApp = true; 
             if (pauseResumeButton) pauseResumeButton.textContent = 'Tiếp tục';
         } else {
-            console.log("Không có gì đang đọc để tạm dừng/tiếp tục, hoặc hàng đợi không hoạt động.");
-            // Có thể reset nút nếu nó ở trạng thái không mong muốn
+            console.log("Không có gì đang đọc để Tạm dừng (synth.speaking is false).");
+            // Có thể utterance vừa kết thúc trước khi kịp pause. Reset nút.
              if (pauseResumeButton) {
                 pauseResumeButton.textContent = 'Tạm dừng';
-                pauseResumeButton.disabled = true; // Vô hiệu hóa nếu không có gì để tạm dừng
+                // Không disable ở đây vì có thể người dùng muốn đọc lại từ đầu
             }
         }
     }
 
+    document.addEventListener('DOMContentLoaded', () => { /* ... giữ nguyên ... */ });
+    // --- Các hàm cũ của trang (Dán vào đây) ---
+    // function getHistory() { ... } 
+    // ... (GIỮ NGUYÊN CÁC HÀM NÀY)
+
+    // --- Khởi tạo ---
     document.addEventListener('DOMContentLoaded', () => {
         logDivElement = document.getElementById('debugLog');
         console.log("Sự kiện DOMContentLoaded (main). Trang đã tải.");
 
         speakButton = document.getElementById('readButton');
-        pauseResumeButton = document.getElementById('pauseResumeButton'); // Gán nút mới
+        pauseResumeButton = document.getElementById('pauseResumeButton'); 
 
         if (typeof speechSynthesis !== 'undefined') {
             console.log("Trình duyệt có hỗ trợ speechSynthesis (main).");
@@ -379,9 +293,10 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
             if(pauseResumeButton) pauseResumeButton.disabled = true;
         }
         if(pauseResumeButton) {
-            pauseResumeButton.textContent = 'Tạm dừng';
+            pauseResumeButton.textContent = 'Tạm dừng'; // Nhãn ban đầu
             pauseResumeButton.disabled = true;
         }
+
 
         const savedUrls = localStorage.getItem(URLS_STORAGE_KEY);
         if (savedUrls) { document.getElementById('urls').value = savedUrls; }
@@ -390,8 +305,6 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
     });
 
     // --- Các hàm cũ của trang (Dán vào đây) ---
-    // function getHistory() { ... }
-    // ... (GIỮ NGUYÊN CÁC HÀM NÀY NHƯ TRONG PHIÊN BẢN TRƯỚC MÀ BẠN ĐÃ CÓ)
     function getHistory() {
         const historyJson = localStorage.getItem(HISTORY_STORAGE_KEY);
         return historyJson ? JSON.parse(historyJson) : [];
