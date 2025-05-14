@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trích xuất nội dung truyện (TTS Chunking - Debug)</title>
+    <title>Trích xuất nội dung truyện (TTS Một Nút - Debug)</title>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
@@ -80,10 +80,15 @@
         button[onclick*="clearUrls"] { background-color: #f44336; }
         button[onclick="copyToClipboard()"] { background-color: #4CAF50; }
         
-        button#readButton { background-color: #673AB7; }
-        button#readButton:disabled { background-color: #b39ddb; }
-        button#stopButton { background-color: #E91E63; }
-        button#stopButton:disabled { background-color: #f48fb1; }
+        /* Nút điều khiển TTS duy nhất */
+        button#speechControlButton { 
+            background-color: #673AB7; /* Màu tím cho trạng thái 'Đọc' */
+            min-width: 120px; /* Đảm bảo đủ không gian cho các nhãn khác nhau */
+        }
+        button#speechControlButton.playing { background-color: #FF9800; /* Màu cam cho 'Tạm dừng' */ }
+        button#speechControlButton.paused { background-color: #4CAF50; /* Màu xanh lá cho 'Tiếp tục' */ }
+        button#speechControlButton:disabled { background-color: #b39ddb; }
+
 
         #progress-container { display: none; background-color: #e0e0e0; border-radius: 5px; margin-bottom: 10px; padding: 10px; }
         #progress-bar { width: 100%; height: 20px; background-color: #ddd; border-radius: 5px; overflow: hidden; }
@@ -104,12 +109,12 @@
     </style>
 </head>
 <body>
-    <h1>Trích xuất nội dung truyện (TTS Chunking - Debug)</h1>
+    <h1>Trích xuất nội dung truyện (TTS Một Nút - Debug)</h1>
 
     <div>
         <h3>1. Nhập URLs (mỗi URL một dòng):</h3>
         <textarea id="urls" rows="5" cols="80" placeholder="https://truyenfull.bio/cuu-thien-kiem-ss-ha-than/chuong-110/"></textarea>
-        <div id="progress-container"> /* ... */ </div> <br>
+        <div id="progress-container"> </div> <br>
         <button onclick="fetchMultipleUrls()">Lấy nội dung tất cả URLs</button>
         <button onclick="generateNextUrls()">Tạo URL tiếp theo</button>
         <button onclick="replaceWithNextUrls()">Xóa và tạo 4 URL mới</button>
@@ -120,8 +125,7 @@
     <div>
         <h3>2. Tổng hợp nội dung:</h3>
         <button onclick="copyToClipboard()">Copy vào Clipboard</button>
-        <button onclick="readContent()" id="readButton">Đọc nội dung</button>
-        <button onclick="stopReading()" id="stopButton">Dừng đọc</button>
+        <button onclick="handleSpeechControl()" id="speechControlButton">Đọc</button> 
         <textarea id="collection" rows="20" cols="80" readonly>Tổng đốc Vương Thăng cau mày, khóe môi hiện lên một nụ cười khổ.
 Sao hắn lại không biết mình nên quyết đoán chứ.
 Nhưng cái quyết đoán này thật sự là không dễ.
@@ -132,21 +136,7 @@ Thời gian gần đây, người này liên thủ với thân sĩ Tú Thủy, �
 lượng bạc để cấu kết và quan hệ với khắp nơi, trăm phương ngàn kế để đóng
 đinh tội danh mưu phản cho Sở Hi Thanh và Thiết Kỳ Bang, cũng làm cho
 Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
-
-Hắn đã không thể coi trận sóng gió ở Tú Thủy này thành một trận dân loạn bình
-thường nữa, nếu như cúi đầu và thỏa hiệp với Thiết Kỳ Bang, thì sẽ khiến cho
-rất nhiều kẻ địch trên chính trị và đám ngự sử trong triều công kích.
-Nhưng nếu đứng bên phe Tư Không Thiện, xuất binh diệt Thiết Kỳ Bang, thì
-Tổng đốc Vương Thăng lại không nuốt trôi cục tức này.
-
-Tư Không Thiện và Án sát sứ Đông Châu liên thủ với nhau, lấy hạ bức thượng,
-đã phạm vào điều tối kỵ trong quan trường, đã đắc tội với hắn.
-Đứng trên lập trường của Tư Không Thiện, có lẽ là không còn lựa chọn nào
-khác, nhưng Vương Thăng lại không thể tha thứ.
-
-Nếu như người người trong quan trường Đông Châu đều như vậy, thì Tổng đốc
-Đông Châu như hắn còn có quyền uy gì?
-Hơn nữa, muốn xuất binh diệt Thiết Kỳ Bang, dễ dàng như vậy sao?</textarea>
+</textarea>
         <p><small>Lưu ý: Để đọc được tiếng Việt, thiết bị Android của bạn cần cài đặt và chọn gói giọng nói tiếng Việt trong cài đặt Text-to-Speech.</small></p>
     </div>
 
@@ -158,18 +148,14 @@ Hơn nữa, muốn xuất binh diệt Thiết Kỳ Bang, dễ dàng như vậy s
     <script>
     // --- Phần ghi log ra div (giữ nguyên) ---
     let logDivElement = null;
-    const originalConsoleLog = console.log; /* ... (giữ nguyên phần ghi log) ... */ 
+    const originalConsoleLog = console.log; 
     const originalConsoleWarn = console.warn;
     const originalConsoleError = console.error;
     function appendToLogDiv(type, args) {
         if (logDivElement) {
             const message = Array.from(args).map(arg => {
-                 if (arg instanceof ErrorEvent && arg.error === undefined) {
-                    return `ErrorEvent (error: undefined, message: ${arg.message || 'N/A'}, utterance: ${arg.utterance ? arg.utterance.text.substring(0,30) : 'N/A'})`;
-                }
-                if (arg instanceof SpeechSynthesisEvent) { 
-                    return `SpeechSynthesisEvent (type: ${arg.type}, charIndex: ${arg.charIndex}, elapsedTime: ${arg.elapsedTime}, name: ${arg.name}, utterance: ${arg.utterance.text.substring(0,30)})`;
-                }
+                 if (arg instanceof ErrorEvent && arg.error === undefined) { return `ErrorEvent (error: undefined, message: ${arg.message || 'N/A'}, utterance: ${arg.utterance ? arg.utterance.text.substring(0,30) : 'N/A'})`; }
+                if (arg instanceof SpeechSynthesisEvent) {  return `SpeechSynthesisEvent (type: ${arg.type}, charIndex: ${arg.charIndex}, elapsedTime: ${arg.elapsedTime}, name: ${arg.name}, utterance: ${arg.utterance.text.substring(0,30)})`; }
                 if (arg instanceof Event) { return `Event (type: ${arg.type}, isTrusted: ${arg.isTrusted})`; }
                 if (arg instanceof Error) return arg.stack || arg.message;
                 if (typeof arg === 'object' && arg !== null) return JSON.stringify(arg, null, 2);
@@ -187,7 +173,7 @@ Hơn nữa, muốn xuất binh diệt Thiết Kỳ Bang, dễ dàng như vậy s
     console.error = function(...args) { originalConsoleError.apply(console, args); appendToLogDiv('ERROR', args); };
     // --- Kết thúc phần ghi log ra div ---
 
-    const URLS_STORAGE_KEY = 'savedStoryUrls'; /* ... (giữ nguyên các hằng số này) ... */
+    const URLS_STORAGE_KEY = 'savedStoryUrls'; 
     const HISTORY_STORAGE_KEY = 'urlHistory';
     const MAX_HISTORY_SIZE = 50;
 
@@ -195,30 +181,58 @@ Hơn nữa, muốn xuất binh diệt Thiết Kỳ Bang, dễ dàng như vậy s
     let currentUtterance = null;
     let ttsVoices = []; 
     let ttsVoicesLoadedAtLeastOnce = false;
-    let speakButton, stopButton;
-    // Biến cho chunking
+    let speechControlButton; 
+    
     let speechChunks = [];
     let currentChunkIndex = 0;
-    let isSpeakingFromQueue = false;
+    let ttsState = 'idle'; // Trạng thái: 'idle', 'playing', 'paused'
 
 
     function populateVoiceList() {
-        console.log("populateVoiceList (main) được gọi.");
+        console.log("populateVoiceList được gọi.");
         if (typeof speechSynthesis === 'undefined') { console.warn('speechSynthesis không được hỗ trợ.'); return; }
         ttsVoices = speechSynthesis.getVoices();
         if (ttsVoices.length > 0) ttsVoicesLoadedAtLeastOnce = true;
-        console.log("Số lượng giọng đọc (main):", ttsVoices.length, ". Đã tải ít nhất một lần:", ttsVoicesLoadedAtLeastOnce);
+        console.log("Số lượng giọng đọc:", ttsVoices.length, ". Đã tải ít nhất một lần:", ttsVoicesLoadedAtLeastOnce);
+        updateSpeechControlButton(); // Cập nhật nút sau khi tải giọng đọc
+    }
+
+    function updateSpeechControlButton() {
+        if (!speechControlButton) speechControlButton = document.getElementById('speechControlButton');
+        if (!speechControlButton) return;
+
+        const collectionText = document.getElementById('collection').value;
+        const hasText = collectionText.trim() !== '';
+
+        speechControlButton.classList.remove('playing', 'paused'); // Xóa các class trạng thái cũ
+
+        if (ttsState === 'playing') {
+            speechControlButton.textContent = 'Tạm dừng';
+            speechControlButton.disabled = false;
+            speechControlButton.classList.add('playing');
+        } else if (ttsState === 'paused') {
+            speechControlButton.textContent = 'Tiếp tục';
+            speechControlButton.disabled = false;
+            speechControlButton.classList.add('paused');
+        } else { // idle
+            speechControlButton.textContent = 'Đọc';
+            speechControlButton.disabled = !hasText || !ttsVoicesLoadedAtLeastOnce; // Chỉ bật khi có text và TTS sẵn sàng
+            if (!ttsVoicesLoadedAtLeastOnce) {
+                console.warn("Nút Đọc bị vô hiệu hóa vì danh sách giọng đọc chưa được tải.");
+            }
+        }
+        console.log(`Nút điều khiển được cập nhật: Text='${speechControlButton.textContent}', Disabled=${speechControlButton.disabled}, State=${ttsState}`);
     }
 
     function speakNextChunk() {
-        console.log(`speakNextChunk được gọi. isSpeakingFromQueue: ${isSpeakingFromQueue}, currentChunkIndex: ${currentChunkIndex}, total chunks: ${speechChunks.length}`);
-        if (!isSpeakingFromQueue || currentChunkIndex >= speechChunks.length) {
-            console.log("Kết thúc hàng đợi đọc chunk hoặc đã dừng.");
-            isSpeakingFromQueue = false;
-            if(speakButton) speakButton.disabled = false;
-            if(stopButton) stopButton.disabled = true;
-            speechChunks = []; // Xóa hàng đợi
-            currentChunkIndex = 0;
+        console.log(`speakNextChunk: ttsState=${ttsState}, currentChunkIndex=${currentChunkIndex}, totalChunks=${speechChunks.length}`);
+        // Kiểm tra nếu đã bị dừng hoặc tạm dừng từ bên ngoài trước khi đọc chunk mới
+        if (ttsState !== 'playing' || currentChunkIndex >= speechChunks.length) {
+            console.log("Kết thúc hàng đợi đọc chunk hoặc đã dừng/tạm dừng hoàn toàn.");
+            if (ttsState !== 'paused') { 
+                 ttsState = 'idle';
+            }
+            updateSpeechControlButton();
             return;
         }
 
@@ -230,28 +244,59 @@ Hơn nữa, muốn xuất binh diệt Thiết Kỳ Bang, dễ dàng như vậy s
 
         currentUtterance.onstart = (event) => {
             console.log(`Sự kiện onstart cho chunk ${currentChunkIndex + 1}.`, event);
-            // Nút đã được quản lý khi bắt đầu readContent
+            // ttsState đã là 'playing'
+            updateSpeechControlButton(); // Cập nhật lại nút phòng trường hợp
+        };
+
+        currentUtterance.onpause = (event) => {
+            console.log(`Sự kiện ONPAUSE cho chunk ${currentChunkIndex + 1}.`, event);
+            // Chỉ cập nhật nếu trạng thái hiện tại là 'playing' (tránh xung đột nếu cancel được gọi)
+            if (ttsState === 'playing') {
+                ttsState = 'paused';
+            }
+            updateSpeechControlButton();
+        };
+        
+        currentUtterance.onresume = (event) => {
+            console.log(`Sự kiện ONRESUME cho chunk ${currentChunkIndex + 1}.`, event);
+            // Chỉ cập nhật nếu trạng thái hiện tại là 'paused'
+            if (ttsState === 'paused') {
+                 ttsState = 'playing';
+            }
+            updateSpeechControlButton();
         };
 
         currentUtterance.onend = (event) => {
-            console.log(`Sự kiện onend cho chunk ${currentChunkIndex + 1}. Chuyển chunk tiếp theo.`, event);
-            currentChunkIndex++;
-            speakNextChunk(); // Đệ quy để đọc chunk tiếp theo
+            console.log(`Sự kiện onend cho chunk ${currentChunkIndex + 1}. Hiện tại ttsState=${ttsState}`, event);
+            currentUtterance = null; // Dọn dẹp utterance này
+            if (ttsState === 'playing') { 
+                currentChunkIndex++;
+                if (currentChunkIndex < speechChunks.length) {
+                    speakNextChunk(); 
+                } else {
+                    console.log("Đã đọc hết tất cả các chunk.");
+                    ttsState = 'idle';
+                    updateSpeechControlButton();
+                }
+            } else {
+                console.log("onend được gọi nhưng ttsState không phải 'playing', không đọc chunk tiếp theo.");
+                 if (ttsState !== 'paused') { 
+                    ttsState = 'idle';
+                    updateSpeechControlButton();
+                }
+            }
         };
 
         currentUtterance.onerror = (event) => {
             console.error(`Sự kiện onerror TTS cho chunk ${currentChunkIndex + 1}:`, event.error, event);
-            let displayError = event.error ? event.error : "Lỗi không xác định (event.error is undefined)";
-            if (event.error && typeof event.error === 'string' && event.error.toLowerCase() === 'synthesis-failed') {
-                displayError = "synthesis-failed"; 
+            if (ttsState !== 'idle' && !(event.error === 'canceled' || event.error === 'interrupted')) {
+                let displayError = event.error ? event.error : "Lỗi không xác định";
+                Swal.fire('Lỗi đọc TTS', `Đã xảy ra lỗi khi đọc chunk ${currentChunkIndex + 1}: ${displayError}.`, 'error');
+            } else {
+                console.warn(`Lỗi onerror (${event.error}) được bỏ qua do ttsState là '${ttsState}' hoặc lỗi là 'canceled'/'interrupted'.`);
             }
-            Swal.fire('Lỗi đọc TTS', `Đã xảy ra lỗi khi đọc chunk ${currentChunkIndex + 1}: ${displayError}.`, 'error');
-            
-            isSpeakingFromQueue = false; // Dừng toàn bộ quá trình đọc khi có lỗi ở một chunk
-            if(speakButton) speakButton.disabled = false;
-            if(stopButton) stopButton.disabled = true;
-            speechChunks = [];
-            currentChunkIndex = 0;
+            ttsState = 'idle';
+            updateSpeechControlButton();
             currentUtterance = null;
         };
         
@@ -261,123 +306,97 @@ Hơn nữa, muốn xuất binh diệt Thiết Kỳ Bang, dễ dàng như vậy s
         } catch (e) {
             console.error(`Lỗi trực tiếp khi gọi speechSynthesis.speak() cho chunk ${currentChunkIndex + 1}:`, e);
             Swal.fire('Lỗi nghiêm trọng TTS', `Lỗi khi gọi hàm speak: ${e.message}`, 'error');
-            isSpeakingFromQueue = false;
-            if(speakButton) speakButton.disabled = false;
-            if(stopButton) stopButton.disabled = true;
+            ttsState = 'idle';
+            updateSpeechControlButton();
         }
     }
 
-
-    function readContent() {
-        console.log("readContent (main) được gọi với logic CHUNKING.");
-        if (!speakButton) speakButton = document.getElementById('readButton');
-        if (!stopButton) stopButton = document.getElementById('stopButton');
+    function handleSpeechControl() {
+        console.log(`handleSpeechControl được gọi. Trạng thái hiện tại: ${ttsState}`);
+        if (!speechControlButton) speechControlButton = document.getElementById('speechControlButton');
 
         if (typeof speechSynthesis === 'undefined') {
             Swal.fire('Lỗi TTS', 'Trình duyệt của bạn không hỗ trợ đọc văn bản.', 'error');
             return;
         }
 
-        if (!ttsVoicesLoadedAtLeastOnce) {
-            populateVoiceList();
-            if (!ttsVoicesLoadedAtLeastOnce && ttsVoices.length === 0) {
-                 Swal.fire('TTS chưa sẵn sàng', 'Hệ thống TTS chưa sẵn sàng. Vui lòng thử lại sau giây lát.', 'warning');
-                 return;
-            }
+        if (!ttsVoicesLoadedAtLeastOnce && ttsVoices.length === 0) {
+            console.warn("Giọng đọc chưa tải, thử populate lại.");
+            populateVoiceList(); // Thử tải lại giọng đọc
+             // Đợi một chút để onvoiceschanged có thể kích hoạt
+            setTimeout(() => {
+                if (!ttsVoicesLoadedAtLeastOnce && ttsVoices.length === 0) {
+                    Swal.fire('TTS chưa sẵn sàng', 'Hệ thống TTS chưa sẵn sàng. Vui lòng thử lại sau giây lát.', 'warning');
+                    return;
+                }
+                 // Gọi lại handleSpeechControl sau khi đã thử populate
+                if (ttsState === 'idle') { // Chỉ gọi lại nếu vẫn đang ở idle để tránh vòng lặp
+                    console.log("Thử gọi lại handleSpeechControl sau khi populateVoiceList.");
+                    handleSpeechControl();
+                }
+            }, 500); // Chờ 0.5 giây
+            return; // Ra khỏi hàm lần này, đợi populate
         }
         
-        // Dừng và xóa hàng đợi cũ nếu đang đọc
-        if (isSpeakingFromQueue || speechSynthesis.speaking || speechSynthesis.pending) {
-            console.log("Đang đọc hoặc chờ đọc, dừng và xóa hàng đợi cũ.");
-            speechSynthesis.cancel(); // Dừng utterance hiện tại
-            isSpeakingFromQueue = false; // Ngăn speakNextChunk tiếp tục với hàng đợi cũ
-            speechChunks = [];
+        if (ttsState === 'idle') { 
+            console.log("Trạng thái 'idle': Bắt đầu đọc mới.");
+            speechSynthesis.cancel(); 
+
+            const textCollection = document.getElementById('collection');
+            const fullText = textCollection.value;
+            if (!fullText.trim()) {
+                Swal.fire('Thông báo', 'Không có nội dung để đọc.', 'info');
+                updateSpeechControlButton(); 
+                return;
+            }
+
+            speechChunks = fullText.split(/\n\s*\n+/).map(chunk => chunk.trim()).filter(chunk => chunk !== '');
+            if (speechChunks.length === 0 && fullText.trim() !== '') {
+                speechChunks = [fullText.trim()];
+            }
+            if (speechChunks.length === 0) {
+                 Swal.fire('Thông báo', 'Nội dung không hợp lệ để đọc.', 'info');
+                 updateSpeechControlButton();
+                 return;
+            }
+            
+            console.log(`Đã chia văn bản thành ${speechChunks.length} chunk(s).`);
             currentChunkIndex = 0;
-        }
-        // Cần một khoảng trễ nhỏ để cancel() hoàn tất trước khi bắt đầu speak mới, đặc biệt nếu speak ngay sau đó.
-        // Hoặc đảm bảo isSpeakingFromQueue được đặt false sẽ ngăn onend của utterance bị cancel kích hoạt speakNextChunk.
+            ttsState = 'playing'; 
+            speakNextChunk();
 
-        const textCollection = document.getElementById('collection');
-        if (!textCollection) {
-            Swal.fire('Lỗi', 'Không tìm thấy ô nội dung để đọc.', 'error');
-            return;
+        } else if (ttsState === 'playing') { 
+            console.log("Trạng thái 'playing': Yêu cầu TẠM DỪNG đọc.");
+            speechSynthesis.pause();
+            // onpause event sẽ cập nhật ttsState và nút
+        } else if (ttsState === 'paused') { 
+            console.log("Trạng thái 'paused': Yêu cầu TIẾP TỤC đọc.");
+            speechSynthesis.resume();
+            // onresume event sẽ cập nhật ttsState và nút
         }
-        const fullText = textCollection.value;
-        if (!fullText.trim()) {
-            Swal.fire('Thông báo', 'Không có nội dung để đọc.', 'info');
-            return;
-        }
-
-        // Chia văn bản thành các chunk dựa trên hai lần xuống dòng (đoạn văn)
-        // Lọc bỏ các chunk trống sau khi trim
-        speechChunks = fullText.split(/\n\s*\n+/).map(chunk => chunk.trim()).filter(chunk => chunk !== '');
-        
-        if (speechChunks.length === 0) {
-            console.log("Không có chunk nào để đọc sau khi chia văn bản.");
-            // Có thể đọc toàn bộ nếu không chia được chunk, hoặc báo lỗi
-            // For now, if fullText was not empty but chunks are, means it's one single block without \n\n
-            if (fullText.trim() !== '') {
-                speechChunks = [fullText.trim()]; // Coi toàn bộ là một chunk
-                console.log("Không có dấu phân đoạn \\n\\n, coi toàn bộ văn bản là một chunk.");
-            } else {
-                 Swal.fire('Thông báo', 'Nội dung không hợp lệ để chia thành các đoạn đọc.', 'info');
-                 return;
-            }
-        }
-        
-        console.log(`Đã chia văn bản thành ${speechChunks.length} chunk(s).`);
-
-        currentChunkIndex = 0;
-        isSpeakingFromQueue = true;
-        if(speakButton) speakButton.disabled = true;
-        if(stopButton) stopButton.disabled = false;
-        
-        speakNextChunk(); // Bắt đầu đọc chunk đầu tiên
+        updateSpeechControlButton(); // Cập nhật nút ngay
     }
 
-    function stopReading() {
-        console.log("stopReading (main) được gọi.");
-        if (!speakButton) speakButton = document.getElementById('readButton');
-        if (!stopButton) stopButton = document.getElementById('stopButton');
-
-        isSpeakingFromQueue = false; // Quan trọng: ngăn việc đọc chunk tiếp theo
-        speechChunks = [];
-        currentChunkIndex = 0;
-
-        if (typeof speechSynthesis === 'undefined' || (!speechSynthesis.speaking && !speechSynthesis.pending)) {
-            console.log("Không có gì đang đọc hoặc chờ đọc để dừng.");
-        } else {
-            console.log("Thực hiện cancel() trong stopReading.");
-            speechSynthesis.cancel(); // Dừng utterance hiện tại
-        }
-        
-        // Đặt lại trạng thái nút ngay lập tức
-        if(speakButton) speakButton.disabled = false;
-        if(stopButton) stopButton.disabled = true;
-        currentUtterance = null; // Dọn dẹp utterance hiện tại
-    }
 
     document.addEventListener('DOMContentLoaded', () => {
         logDivElement = document.getElementById('debugLog');
-        console.log("Sự kiện DOMContentLoaded (main). Trang đã tải.");
+        console.log("Sự kiện DOMContentLoaded. Trang đã tải.");
 
-        speakButton = document.getElementById('readButton');
-        stopButton = document.getElementById('stopButton');
+        speechControlButton = document.getElementById('speechControlButton'); 
 
         if (typeof speechSynthesis !== 'undefined') {
-            console.log("Trình duyệt có hỗ trợ speechSynthesis (main).");
+            console.log("Trình duyệt có hỗ trợ speechSynthesis.");
             speechSynthesis.onvoiceschanged = () => {
-                console.log("Sự kiện onvoiceschanged (main) được kích hoạt.");
+                console.log("Sự kiện onvoiceschanged được kích hoạt.");
                 populateVoiceList();
             };
-            populateVoiceList();
+            populateVoiceList(); // Gọi lần đầu để cố gắng lấy danh sách giọng đọc
         } else {
-            console.warn('Text-to-Speech không được hỗ trợ (main). Vô hiệu hóa nút TTS.');
-            if(speakButton) speakButton.disabled = true;
-            if(stopButton) stopButton.disabled = true;
+            console.warn('Text-to-Speech không được hỗ trợ. Vô hiệu hóa nút TTS.');
+            if(speechControlButton) speechControlButton.disabled = true;
         }
-        if(stopButton) stopButton.disabled = true;
-
+        
+        updateSpeechControlButton(); 
 
         const savedUrls = localStorage.getItem(URLS_STORAGE_KEY);
         if (savedUrls) { document.getElementById('urls').value = savedUrls; }
@@ -481,6 +500,7 @@ Hơn nữa, muốn xuất binh diệt Thiết Kỳ Bang, dễ dàng như vậy s
             await new Promise(resolve => setTimeout(resolve, 300));
         }
         document.getElementById('collection').value = allContent.trim();
+        updateSpeechControlButton(); // Cập nhật trạng thái nút Đọc sau khi có nội dung mới
         progressContainer.style.display = 'none';
         Swal.fire({
             icon: failCount > 0 ? (successCount > 0 ? 'warning' : 'error') : 'success',
@@ -651,3 +671,17 @@ Hơn nữa, muốn xuất binh diệt Thiết Kỳ Bang, dễ dàng như vậy s
     </script>
 </body>
 </html>
+```
+
+**Cách bạn kiểm tra:**
+
+1.  **Mở tệp HTML này.**
+2.  **Thử nghiệm các kịch bản sau và quan sát log:**
+    * **Bắt đầu đọc:** Nhấn nút "Đọc". Log sẽ hiển thị quá trình chia chunk và bắt đầu đọc chunk 1. Nút sẽ đổi thành "Tạm dừng".
+    * **Tạm dừng:** Khi đang đọc, nhấn nút "Tạm dừng". Log sẽ hiển thị `speechSynthesis.pause()` được gọi. Sự kiện `onpause` của utterance nên được kích hoạt, `ttsState` chuyển thành 'paused', và nút đổi thành "Tiếp tục".
+    * **Tiếp tục:** Khi đang tạm dừng, nhấn nút "Tiếp tục". Log sẽ hiển thị `speechSynthesis.resume()` được gọi. Sự kiện `onresume` của utterance nên được kích hoạt, `ttsState` chuyển thành 'playing', và nút đổi thành "Tạm dừng". Âm thanh có đọc tiếp từ chỗ dừng không?
+    * **Đọc lại từ đầu khi đang đọc/tạm dừng:** Khi đang đọc hoặc đang tạm dừng, nhấn nút (lúc đó đang là "Tạm dừng" hoặc "Tiếp tục"). Hành động này nên được coi như yêu cầu "Đọc lại từ đầu". Log sẽ hiển thị `speechSynthesis.cancel()` được gọi, sau đó quá trình chia chunk và đọc lại từ chunk 0 sẽ bắt đầu. Nút sẽ trở về "Tạm dừng".
+    * **Đọc hết:** Để cho TTS đọc hết tất cả các chunk. Log sẽ hiển thị từng chunk được đọc. Sau khi chunk cuối cùng đọc xong, `ttsState` nên trở về 'idle' và nút đổi thành "Đọc".
+3.  **Quan sát log để xem các sự kiện `onpause`, `onresume` có được kích hoạt đúng không và `ttsState` có được cập nhật chính xác không.**
+
+Phản hồi của bạn về hoạt động của phiên bản này, đặc biệt là việc "không đọc tiếp" sau khi tạm dừng, sẽ rất quan trọ
