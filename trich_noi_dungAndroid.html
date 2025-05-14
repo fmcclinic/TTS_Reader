@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trích xuất nội dung truyện (có TTS)</title>
+    <title>Trích xuất nội dung truyện (có TTS - Debug)</title>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
@@ -36,7 +36,7 @@
             padding-bottom: 5px;
             margin-top: 25px;
         }
-        div { /* Áp dụng cho các div chính, không phải debug log nếu có */
+        div:not(#debugLogContainer) { /* Loại trừ debugLogContainer khỏi style chung này */
             background: white;
             padding: 20px;
             border-radius: 10px;
@@ -89,6 +89,28 @@
         #progress-bar { width: 100%; height: 20px; background-color: #ddd; border-radius: 5px; overflow: hidden; }
         #progress-bar-fill { width: 0%; height: 100%; background-color: #4CAF50; }
         #progress-text { text-align: center; margin-top: 5px; }
+        
+        #debugLogContainer {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #222;
+            color: #0f0; /* Đổi màu chữ của tiêu đề container nếu cần */
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #debugLog {
+            height: 200px;
+            overflow-y: scroll;
+            border: 1px solid #444;
+            background-color: #111;
+            padding: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
+            white-space: pre-wrap;
+            color: #0f0; /* Màu chữ xanh lá cho log */
+        }
+        #debugLog .warn { color: #ff0; /* Màu vàng cho warning */ }
+        #debugLog .error { color: #f00; /* Màu đỏ cho error */ }
 
         @media (max-width: 768px) {
             body { padding: 10px; }
@@ -99,7 +121,7 @@
     </style>
 </head>
 <body>
-    <h1>Trích xuất nội dung truyện (có TTS)</h1>
+    <h1>Trích xuất nội dung truyện (có TTS - Debug)</h1>
 
     <div>
         <h3>1. Nhập URLs (mỗi URL một dòng):</h3>
@@ -123,95 +145,138 @@
         <button onclick="copyToClipboard()">Copy vào Clipboard</button>
         <button onclick="readContent()" id="readButton">Đọc nội dung</button>
         <button onclick="stopReading()" id="stopButton">Dừng đọc</button>
-        <textarea id="collection" rows="20" cols="80" readonly></textarea>
+        <textarea id="collection" rows="20" cols="80" readonly>Đây là nội dung thử nghiệm để đọc. Xin chào.</textarea>
         <p><small>Lưu ý: Để đọc được tiếng Việt, thiết bị Android của bạn cần cài đặt và chọn gói giọng nói tiếng Việt trong cài đặt Text-to-Speech.</small></p>
     </div>
 
+    <div id="debugLogContainer">
+        <h4>Log gỡ lỗi TTS (Trên trang chính):</h4>
+        <div id="debugLog"></div>
+    </div>
+
     <script>
+    // --- Phần ghi log ra div ---
+    let logDivElement = null;
+    const originalConsoleLog = console.log;
+    const originalConsoleWarn = console.warn;
+    const originalConsoleError = console.error;
+
+    function appendToLogDiv(type, args) {
+        if (logDivElement) {
+            const message = Array.from(args).map(arg => {
+                 if (arg instanceof ErrorEvent && arg.error === undefined) {
+                    return `ErrorEvent (error: undefined, message: ${arg.message || 'N/A'}, utterance: ${arg.utterance ? arg.utterance.text.substring(0,30) : 'N/A'})`;
+                }
+                if (arg instanceof SpeechSynthesisEvent) { 
+                    return `SpeechSynthesisEvent (type: ${arg.type}, charIndex: ${arg.charIndex}, elapsedTime: ${arg.elapsedTime}, name: ${arg.name}, utterance: ${arg.utterance.text.substring(0,30)})`;
+                }
+                if (arg instanceof Event) {
+                    return `Event (type: ${arg.type}, isTrusted: ${arg.isTrusted})`;
+                }
+                if (arg instanceof Error) return arg.stack || arg.message;
+                if (typeof arg === 'object' && arg !== null) return JSON.stringify(arg, null, 2);
+                return String(arg);
+            }).join(' ');
+            const entry = document.createElement('div');
+            entry.className = type.toLowerCase();
+            entry.textContent = `[${type.toUpperCase()}] ${new Date().toLocaleTimeString()}: ${message}`;
+            logDivElement.appendChild(entry);
+            logDivElement.scrollTop = logDivElement.scrollHeight;
+        }
+    }
+    console.log = function(...args) { originalConsoleLog.apply(console, args); appendToLogDiv('LOG', args); };
+    console.warn = function(...args) { originalConsoleWarn.apply(console, args); appendToLogDiv('WARN', args); };
+    console.error = function(...args) { originalConsoleError.apply(console, args); appendToLogDiv('ERROR', args); };
+    // --- Kết thúc phần ghi log ra div ---
+
     const URLS_STORAGE_KEY = 'savedStoryUrls';
     const HISTORY_STORAGE_KEY = 'urlHistory';
     const MAX_HISTORY_SIZE = 50;
 
     let currentUtterance = null;
-    let ttsVoices = []; 
+    let ttsVoices = [];
     let ttsVoicesLoadedAtLeastOnce = false;
     let speakButton, stopButton;
 
     function populateVoiceList() {
-        // console.log("populateVoiceList (main) được gọi."); // Có thể bật lại nếu cần debug
+        console.log("populateVoiceList (main) được gọi.");
         if (typeof speechSynthesis === 'undefined') {
-            // console.warn('speechSynthesis không được hỗ trợ (trong populateVoiceList).');
+            console.warn('speechSynthesis không được hỗ trợ (trong populateVoiceList).');
             return;
         }
         ttsVoices = speechSynthesis.getVoices();
         if (ttsVoices.length > 0) {
             ttsVoicesLoadedAtLeastOnce = true;
         }
-        // console.log("Số lượng giọng đọc (main):", ttsVoices.length, ". Đã tải giọng ít nhất một lần:", ttsVoicesLoadedAtLeastOnce);
+        console.log("Số lượng giọng đọc (main):", ttsVoices.length, ". Đã tải giọng ít nhất một lần:", ttsVoicesLoadedAtLeastOnce);
     }
 
     function readContent() {
-        // console.log("readContent (main) được gọi."); // Có thể bật lại nếu cần debug
+        console.log("readContent (main) được gọi.");
         if (!speakButton) speakButton = document.getElementById('readButton');
         if (!stopButton) stopButton = document.getElementById('stopButton');
 
         if (typeof speechSynthesis === 'undefined') {
             Swal.fire('Lỗi TTS', 'Trình duyệt của bạn không hỗ trợ đọc văn bản.', 'error');
-            // console.error("speechSynthesis không được hỗ trợ (trong readContent).");
+            console.error("speechSynthesis không được hỗ trợ (trong readContent).");
             return;
         }
 
         if (!ttsVoicesLoadedAtLeastOnce) {
-            // console.warn("Giọng đọc TTS có vẻ chưa sẵn sàng (ttsVoicesLoadedAtLeastOnce=false). Thử gọi populateVoiceList.");
+            console.warn("Giọng đọc TTS có vẻ chưa sẵn sàng (ttsVoicesLoadedAtLeastOnce=false). Thử gọi populateVoiceList.");
             populateVoiceList(); 
-            if (!ttsVoicesLoadedAtLeastOnce && ttsVoices.length === 0) {
+            if (!ttsVoicesLoadedAtLeastOnce && ttsVoices.length === 0) { 
                  Swal.fire('TTS chưa sẵn sàng', 'Hệ thống TTS chưa sẵn sàng. Vui lòng thử lại sau giây lát.', 'warning');
-                 // console.warn("Vẫn chưa tải được giọng đọc sau khi thử lại.");
+                 console.warn("Vẫn chưa tải được giọng đọc sau khi thử lại.");
                  return;
             }
         }
         
-        // console.log(`Trạng thái speechSynthesis: speaking=${speechSynthesis.speaking}, pending=${speechSynthesis.pending}`);
+        console.log(`Trạng thái speechSynthesis: speaking=${speechSynthesis.speaking}, pending=${speechSynthesis.pending}`);
         if (speechSynthesis.speaking || speechSynthesis.pending) {
-            // console.log("Đang đọc hoặc chờ đọc, thực hiện cancel().");
+            console.log("Đang đọc hoặc chờ đọc, thực hiện cancel().");
             speechSynthesis.cancel();
         }
 
         const textCollection = document.getElementById('collection');
         if (!textCollection) {
-            // console.error("Không tìm thấy textarea#collection.");
+            console.error("Không tìm thấy textarea#collection.");
             Swal.fire('Lỗi', 'Không tìm thấy ô nội dung để đọc.', 'error');
             return;
         }
         const text = textCollection.value;
-        // console.log("Nội dung lấy từ #collection (100 ký tự đầu):", text.substring(0,100));
+        console.log("Nội dung lấy từ #collection (100 ký tự đầu):", text.substring(0,100));
 
         if (!text.trim()) {
             Swal.fire('Thông báo', 'Không có nội dung để đọc.', 'info');
-            // console.log("Không có nội dung để đọc trong #collection.");
+            console.log("Không có nội dung để đọc trong #collection.");
             return;
         }
 
         currentUtterance = new SpeechSynthesisUtterance(text);
         currentUtterance.lang = 'vi-VN';
-        // console.log(`Đã tạo utterance với lang='${currentUtterance.lang}'. Không gán voice cụ thể.`);
+        console.log(`Đã tạo utterance với lang='${currentUtterance.lang}'. Không gán voice cụ thể.`);
 
         currentUtterance.onstart = (event) => {
-            // console.log("Sự kiện onstart (main): Bắt đầu đọc.", event);
+            console.log("Sự kiện onstart (main): Bắt đầu đọc.", event);
             if(speakButton) speakButton.disabled = true;
             if(stopButton) stopButton.disabled = false;
         };
 
         currentUtterance.onend = (event) => {
-            // console.log("Sự kiện onend (main): Kết thúc đọc.", event);
+            console.log("Sự kiện onend (main): Kết thúc đọc.", event);
             if(speakButton) speakButton.disabled = false;
             if(stopButton) stopButton.disabled = true;
             currentUtterance = null;
         };
 
         currentUtterance.onerror = (event) => {
-            console.error('Sự kiện onerror TTS (main):', event.error, event); // Vẫn giữ log lỗi này cho nhà phát triển
+            console.error('Sự kiện onerror TTS (main):', event.error, event);
             let displayError = event.error ? event.error : "Lỗi không xác định (event.error is undefined)";
+            // Kiểm tra cụ thể nếu lỗi là "synthesis-failed"
+            if (event.error && typeof event.error === 'string' && event.error.toLowerCase() === 'synthesis-failed') {
+                displayError = "synthesis-failed"; 
+            }
             Swal.fire('Lỗi đọc TTS', `Đã xảy ra lỗi: ${displayError}. Vui lòng kiểm tra cài đặt TTS trên thiết bị.`, 'error');
             if(speakButton) speakButton.disabled = false;
             if(stopButton) stopButton.disabled = true;
@@ -220,10 +285,10 @@
         
         if(speakButton) speakButton.disabled = true;
         if(stopButton) stopButton.disabled = false;
-        // console.log("Chuẩn bị gọi speechSynthesis.speak() (main).");
+        console.log("Chuẩn bị gọi speechSynthesis.speak() (main).");
         try {
             speechSynthesis.speak(currentUtterance);
-            // console.log("Đã gọi speechSynthesis.speak() (main).");
+            console.log("Đã gọi speechSynthesis.speak() (main).");
         } catch (e) {
             console.error("Lỗi trực tiếp khi gọi speechSynthesis.speak():", e);
             Swal.fire('Lỗi nghiêm trọng TTS', `Lỗi khi gọi hàm speak: ${e.message}`, 'error');
@@ -233,15 +298,15 @@
     }
 
     function stopReading() {
-        // console.log("stopReading (main) được gọi.");
+        console.log("stopReading (main) được gọi.");
         if (!speakButton) speakButton = document.getElementById('readButton');
         if (!stopButton) stopButton = document.getElementById('stopButton');
 
         if (typeof speechSynthesis === 'undefined' || (!speechSynthesis.speaking && !speechSynthesis.pending)) {
-            // console.log("Không có gì đang đọc hoặc chờ đọc để dừng (main).");
+            console.log("Không có gì đang đọc hoặc chờ đọc để dừng (main).");
             return;
         }
-        // console.log("Thực hiện cancel() trong stopReading (main).");
+        console.log("Thực hiện cancel() trong stopReading (main).");
         speechSynthesis.cancel();
         if(speakButton) speakButton.disabled = false;
         if(stopButton) stopButton.disabled = true;
@@ -249,20 +314,21 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        // console.log("Sự kiện DOMContentLoaded (main). Trang đã tải.");
+        logDivElement = document.getElementById('debugLog');
+        console.log("Sự kiện DOMContentLoaded (main). Trang đã tải.");
 
         speakButton = document.getElementById('readButton');
         stopButton = document.getElementById('stopButton');
 
         if (typeof speechSynthesis !== 'undefined') {
-            // console.log("Trình duyệt có hỗ trợ speechSynthesis (main).");
+            console.log("Trình duyệt có hỗ trợ speechSynthesis (main).");
             speechSynthesis.onvoiceschanged = () => {
-                // console.log("Sự kiện onvoiceschanged (main) được kích hoạt.");
+                console.log("Sự kiện onvoiceschanged (main) được kích hoạt.");
                 populateVoiceList();
             };
             populateVoiceList();
         } else {
-            // console.warn('Text-to-Speech không được hỗ trợ (main). Vô hiệu hóa nút TTS.');
+            console.warn('Text-to-Speech không được hỗ trợ (main). Vô hiệu hóa nút TTS.');
             if(speakButton) speakButton.disabled = true;
             if(stopButton) stopButton.disabled = true;
         }
@@ -280,7 +346,6 @@
         const historyJson = localStorage.getItem(HISTORY_STORAGE_KEY);
         return historyJson ? JSON.parse(historyJson) : [];
     }
-
     function addToHistory(url) {
         let history = getHistory();
         history = history.filter(item => item !== url);
@@ -288,7 +353,6 @@
         history = history.slice(0, MAX_HISTORY_SIZE);
         localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
     }
-
     async function showUrlHistory() {
         const history = getHistory();
         if (history.length === 0) {
@@ -297,7 +361,6 @@
         }
         const inputOptions = {};
         history.forEach(url => { inputOptions[url] = url; });
-
         const { value: selectedUrl } = await Swal.fire({
             title: 'Lịch sử URL',
             input: 'select',
@@ -307,40 +370,33 @@
             cancelButtonText: 'Hủy',
             confirmButtonText: 'Thêm vào ô nhập',
         });
-
         if (selectedUrl) {
             const urlsTextarea = document.getElementById('urls');
             urlsTextarea.value += (urlsTextarea.value.trim() ? '\n' : '') + selectedUrl;
             localStorage.setItem(URLS_STORAGE_KEY, urlsTextarea.value);
         }
     }
-
     async function fetchMultipleUrls() {
         const urlsText = document.getElementById('urls').value;
         const urls = urlsText.split('\n').filter(url => url.trim());
-
         if (urls.length === 0) {
             Swal.fire('Cảnh báo', 'Vui lòng nhập ít nhất một URL.', 'warning');
             return;
         }
-
         const progressBarFill = document.getElementById('progress-bar-fill');
         const progressText = document.getElementById('progress-text');
         const progressContainer = document.getElementById('progress-container');
         progressContainer.style.display = 'block';
         progressBarFill.style.width = '0%';
         progressText.textContent = '';
-
         let allContent = '';
         let successCount = 0;
         let failCount = 0;
-
         for (let i = 0; i < urls.length; i++) {
             const currentUrl = urls[i].trim();
             const progress = ((i + 1) / urls.length) * 100;
             progressBarFill.style.width = `${progress}%`;
             progressText.textContent = `Đang xử lý URL ${i + 1}/${urls.length}`;
-
             try {
                 const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(currentUrl);
                 const response = await fetch(proxyUrl);
@@ -356,7 +412,6 @@
                     } catch (e) { /* Bỏ qua lỗi parse json */ }
                     throw new Error(errorMsg);
                 }
-
                 const data = await response.json();
                 if (data.contents && !data.contents.includes("Rate limit exceeded") && !data.contents.includes("Too Many Requests")) {
                     const content = await extractContent(data.contents);
@@ -381,17 +436,14 @@
             }
             await new Promise(resolve => setTimeout(resolve, 300));
         }
-
         document.getElementById('collection').value = allContent.trim();
         progressContainer.style.display = 'none';
-
         Swal.fire({
             icon: failCount > 0 ? (successCount > 0 ? 'warning' : 'error') : 'success',
             title: 'Hoàn thành!',
             text: `Thành công: ${successCount} URL\nThất bại: ${failCount} URL`,
         });
     }
-
     function processText(text) {
         text = text.replace(/\r\n/g, '\n');
         text = text.replace(/[ \t]*\n[ \t]*/g, '\n');
@@ -403,29 +455,24 @@
         text = text.trim();
         return text;
     }
-
     async function extractContent(html) {
         if (!html) return '';
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-
         const truyenTitleEl = doc.querySelector('.truyen-title a, .breadcrumb li:nth-last-child(2) a, h1.breadcrumb-title');
         const chapterTitleEl = doc.querySelector('.chapter-title, h1.entry-title, .h1 DBMana-chapter');
         let title = '';
         const truyenTitle = truyenTitleEl ? truyenTitleEl.textContent.trim() : '';
         const chapterTitle = chapterTitleEl ? chapterTitleEl.textContent.trim() : '';
-
         if (truyenTitle && chapterTitle) {
             title = `${truyenTitle.toUpperCase()} - ${chapterTitle.toUpperCase()}\n\n`;
         } else if (chapterTitle) {
             title = `${chapterTitle.toUpperCase()}\n\n`;
         }
-
         let chapterContentElement = doc.querySelector('#chapter-c, .entry-content, .reading-content, #content, article .text-left, #vung_doc, .chapter-content');
         if (!chapterContentElement) {
             return '';
         }
-
         const selectorsToRemove = [
             '.ads-responsive', '.ads-chapter-bottom-lien-quan', 'script', 'style',
             'iframe', 'ins', '.hidden', '[style*="display:none"]', '[style*="display: none"]',
@@ -438,7 +485,6 @@
             '.notes', '.navigation-panel', '.chapter-selection', '.fb-comments', '.comments-area'
         ];
         chapterContentElement.querySelectorAll(selectorsToRemove.join(', ')).forEach(el => el.remove());
-
         let content = '';
         const paragraphs = chapterContentElement.querySelectorAll('p');
         if (paragraphs.length > 10) {
@@ -466,7 +512,6 @@
             }
             content = content.replace(/\s+/g, ' ');
         }
-
         const linesToRemove = [
             /truyện được cập nhật tại .*/i, /nguồn truyện: .*/i, /đọc truyện tại .*/i,
             /mời bạn đọc thêm nhiều truyện hay tại .*/i, /hãy bình chọn cho truyện/i,
@@ -485,7 +530,6 @@
         content = processText(content.trim());
         return title + content;
     }
-
     function generateNextUrls() {
         const urlsText = document.getElementById('urls').value.trim();
         if (!urlsText) {
@@ -512,7 +556,6 @@
         urlsTextarea.value = urlsText + '\n' + newUrls.trim();
         localStorage.setItem(URLS_STORAGE_KEY, urlsTextarea.value);
     }
-
     function replaceWithNextUrls() {
         const urlsText = document.getElementById('urls').value.trim();
         if (!urlsText) {
@@ -539,13 +582,11 @@
         urlsTextarea.value = newUrls.trim();
         localStorage.setItem(URLS_STORAGE_KEY, urlsTextarea.value);
     }
-
     function clearUrls() {
         const urlsTextarea = document.getElementById('urls');
         urlsTextarea.value = '';
         localStorage.removeItem(URLS_STORAGE_KEY);
     }
-
     async function copyToClipboard() {
         const text = document.getElementById('collection').value;
         if (!text.trim()) {
