@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trích xuất nội dung truyện (TTS Một Nút - Sửa Fetch)</title>
+    <title>Trích xuất nội dung truyện (TTS Một Nút - Phục hồi URL)</title>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
@@ -127,7 +127,7 @@
     </style>
 </head>
 <body>
-    <h1>Trích xuất nội dung truyện (TTS Một Nút - Sửa Fetch)</h1>
+    <h1>Trích xuất nội dung truyện (TTS Một Nút - Phục hồi URL)</h1>
 
     <div>
         <h3>1. Nhập URLs (mỗi URL một dòng):</h3>
@@ -212,16 +212,19 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
 
 
     function populateVoiceList() {
-        console.log("populateVoiceList được gọi.");
-        if (typeof speechSynthesis === 'undefined') { console.warn('speechSynthesis không được hỗ trợ.'); return; }
+        // console.log("populateVoiceList được gọi."); // Bỏ comment nếu cần debug TTS
+        if (typeof speechSynthesis === 'undefined') { 
+            // console.warn('speechSynthesis không được hỗ trợ.'); 
+            return; 
+        }
         ttsVoices = speechSynthesis.getVoices();
         if (ttsVoices.length > 0) {
             ttsVoicesLoadedAtLeastOnce = true;
-            console.log("Danh sách giọng đọc đã được tải.");
+            // console.log("Danh sách giọng đọc đã được tải.");
         } else {
-            console.warn("Danh sách giọng đọc vẫn trống sau khi onvoiceschanged/populate.");
+            // console.warn("Danh sách giọng đọc vẫn trống sau khi onvoiceschanged/populate.");
         }
-        console.log("Số lượng giọng đọc:", ttsVoices.length, ". Đã tải ít nhất một lần:", ttsVoicesLoadedAtLeastOnce);
+        // console.log("Số lượng giọng đọc:", ttsVoices.length, ". Đã tải ít nhất một lần:", ttsVoicesLoadedAtLeastOnce);
         updateSpeechControlButton(); 
     }
 
@@ -245,21 +248,12 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
         } else { // idle
             speechControlButton.textContent = 'Đọc';
             speechControlButton.disabled = !hasText || !ttsVoicesLoadedAtLeastOnce; 
-            if (!ttsVoicesLoadedAtLeastOnce) {
-                // console.warn("Nút Đọc bị vô hiệu hóa vì TTS chưa sẵn sàng (giọng đọc chưa tải).");
-            } else if (!hasText) {
-                // console.log("Nút Đọc bị vô hiệu hóa vì không có nội dung.");
-            }
         }
-        // console.log(`Nút điều khiển được cập nhật: Text='${speechControlButton.textContent}', Disabled=${speechControlButton.disabled}, State=${ttsState}`);
     }
 
     function speakNextChunk() {
-        // console.log(`speakNextChunk: ttsState=${ttsState}, currentChunkIndex=${currentChunkIndex}, totalChunks=${speechChunks.length}`);
         if (ttsState !== 'playing' || currentChunkIndex >= speechChunks.length) {
-            // console.log("speakNextChunk: Không đọc. Lý do: ttsState không phải 'playing' hoặc đã hết chunk.");
             if (ttsState !== 'paused' && currentChunkIndex >= speechChunks.length) { 
-                 // console.log("speakNextChunk: Đã đọc hết tất cả các chunk. Chuyển ttsState sang 'idle'.");
                  ttsState = 'idle';
             } else if (ttsState !== 'paused') {
                 ttsState = 'idle';
@@ -269,53 +263,33 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
         }
 
         const chunkText = speechChunks[currentChunkIndex];
-        // console.log(`Chuẩn bị đọc chunk ${currentChunkIndex + 1}/${speechChunks.length}: "${chunkText.substring(0, 50)}..."`);
-
         currentUtterance = new SpeechSynthesisUtterance(chunkText);
         currentUtterance.lang = 'vi-VN';
 
         currentUtterance.onstart = (event) => {
-            // console.log(`Sự kiện onstart cho chunk ${currentChunkIndex + 1}. Hiện tại ttsState=${ttsState}`, event);
             if (ttsState !== 'playing') {
-                // console.warn("onstart được gọi nhưng ttsState không phải 'playing'. Cập nhật thành 'playing'.");
                 ttsState = 'playing';
             }
             updateSpeechControlButton(); 
         };
         
-        currentUtterance.onpause = (event) => { 
-            // console.log(`Sự kiện Utterance ONPAUSE cho chunk ${currentChunkIndex + 1}. speechState.paused=${speechSynthesis.paused}`, event);
-        };
-        
-        currentUtterance.onresume = (event) => { 
-            // console.log(`Sự kiện Utterance ONRESUME cho chunk ${currentChunkIndex + 1}. speechState.paused=${speechSynthesis.paused}`, event);
-        };
-
         currentUtterance.onend = (event) => {
-            // console.log(`Sự kiện onend cho chunk ${currentChunkIndex + 1}. Hiện tại ttsState=${ttsState}, speechSynthesis.speaking=${speechSynthesis.speaking}, speechSynthesis.paused=${speechSynthesis.paused}`, event);
             currentUtterance = null; 
-
             if (ttsState === 'playing') { 
-                // console.log(`onend: ttsState is 'playing'. Incrementing chunk index from ${currentChunkIndex}.`);
                 currentChunkIndex++;
                 if (currentChunkIndex < speechChunks.length) {
-                    // console.log(`onend: Calling speakNextChunk for new index ${currentChunkIndex}.`);
                     speakNextChunk(); 
                 } else {
-                    // console.log("Đã đọc hết tất cả các chunk. Chuyển ttsState sang 'idle'.");
                     ttsState = 'idle';
                     updateSpeechControlButton();
                 }
             } else if (ttsState === 'paused') {
-                 // console.log("onend được gọi nhưng ttsState là 'paused'. Chunk này có thể đã kết thúc trong khi tạm dừng. Sẽ tăng currentChunkIndex.");
                  currentChunkIndex++; 
                  if (currentChunkIndex >= speechChunks.length) {
-                     // console.log("Đã ở cuối danh sách chunk trong khi paused và onend được gọi. Chuyển về idle.");
                      ttsState = 'idle';
                  }
                  updateSpeechControlButton(); 
             } else { 
-                // console.log(`onend được gọi nhưng ttsState là '${ttsState}'. Không đọc chunk tiếp theo.`);
                 updateSpeechControlButton(); 
             }
         };
@@ -325,8 +299,6 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
             if (ttsState !== 'idle' && ttsState !== 'paused' && !(event.error === 'canceled' || event.error === 'interrupted')) {
                 let displayError = event.error ? event.error : "Lỗi không xác định";
                 Swal.fire('Lỗi đọc TTS', `Đã xảy ra lỗi khi đọc chunk ${currentChunkIndex + 1}: ${displayError}.`, 'error');
-            } else {
-                // console.warn(`Lỗi onerror (${event.error}) được bỏ qua do ttsState là '${ttsState}' hoặc lỗi là 'canceled'/'interrupted'.`);
             }
             if (!( (event.error === 'canceled' || event.error === 'interrupted') && ttsState === 'paused') ) {
                 ttsState = 'idle'; 
@@ -337,7 +309,6 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
         
         try {
             speechSynthesis.speak(currentUtterance);
-            // console.log(`Đã gọi speechSynthesis.speak() cho chunk ${currentChunkIndex + 1}.`);
         } catch (e) {
             console.error(`Lỗi trực tiếp khi gọi speechSynthesis.speak() cho chunk ${currentChunkIndex + 1}:`, e);
             Swal.fire('Lỗi nghiêm trọng TTS', `Lỗi khi gọi hàm speak: ${e.message}`, 'error');
@@ -347,16 +318,13 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
     }
 
     function handleSpeechControl() {
-        // console.log(`handleSpeechControl được gọi. Trạng thái hiện tại: ${ttsState}`);
         if (!speechControlButton) speechControlButton = document.getElementById('speechControlButton');
-
         if (typeof speechSynthesis === 'undefined') {
             Swal.fire('Lỗi TTS', 'Trình duyệt của bạn không hỗ trợ đọc văn bản.', 'error');
             return;
         }
 
         if (!ttsVoicesLoadedAtLeastOnce && ttsVoices.length === 0) {
-            // console.warn("Giọng đọc chưa tải, thử populate lại.");
             populateVoiceList(); 
             setTimeout(() => {
                 if (!ttsVoicesLoadedAtLeastOnce && ttsVoices.length === 0) {
@@ -365,7 +333,6 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
                     return;
                 }
                 if (ttsState === 'idle' && document.getElementById('speechControlButton').textContent === 'Đọc') { 
-                    // console.log("Thử gọi lại handleSpeechControl sau khi populateVoiceList (nếu vẫn idle và nút là 'Đọc').");
                     handleSpeechControl();
                 }
             }, 500); 
@@ -373,12 +340,9 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
         }
         
         if (ttsState === 'idle') { 
-            // console.log("Trạng thái 'idle': Bắt đầu đọc mới / Đọc lại từ đầu.");
             if(speechSynthesis.speaking || speechSynthesis.pending || speechSynthesis.paused) { 
-                // console.log(`Hủy bỏ việc đọc/chờ đọc/đang tạm dừng cũ. Speaking: ${speechSynthesis.speaking}, Pending: ${speechSynthesis.pending}, Paused: ${speechSynthesis.paused}`);
                 speechSynthesis.cancel(); 
             }
-
             const textCollection = document.getElementById('collection');
             const fullText = textCollection.value;
             if (!fullText.trim()) {
@@ -386,7 +350,6 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
                 updateSpeechControlButton(); 
                 return;
             }
-
             speechChunks = fullText.split(/\n\s*\n+/).map(chunk => chunk.trim()).filter(chunk => chunk !== '');
             if (speechChunks.length === 0 && fullText.trim() !== '') {
                 speechChunks = [fullText.trim()];
@@ -396,55 +359,39 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
                  updateSpeechControlButton();
                  return;
             }
-            
-            // console.log(`Đã chia văn bản thành ${speechChunks.length} chunk(s).`);
             currentChunkIndex = 0;
             ttsState = 'playing'; 
             speakNextChunk();
-
         } else if (ttsState === 'playing') { 
-            // console.log(`Trạng thái 'playing': Yêu cầu TẠM DỪNG đọc. Trước cancel(): speaking=${speechSynthesis.speaking}, paused=${speechSynthesis.paused}`);
-            speechSynthesis.cancel(); // Sử dụng cancel thay vì pause
+            speechSynthesis.cancel(); 
             ttsState = 'paused'; 
-            // console.log(`Sau cancel() để tạm dừng: speaking=${speechSynthesis.speaking}, paused=${speechSynthesis.paused}. ttsState giờ là 'paused'.`);
         } else if (ttsState === 'paused') { 
-            // console.log(`Trạng thái 'paused': Yêu cầu TIẾP TỤC đọc. currentChunkIndex=${currentChunkIndex}, totalChunks=${speechChunks.length}.`);
             ttsState = 'playing'; 
-            // console.log("Sẽ gọi speakNextChunk() để tiếp tục từ chunk hiện tại/tiếp theo.");
             speakNextChunk(); 
         }
         updateSpeechControlButton(); 
     }
 
-
     document.addEventListener('DOMContentLoaded', () => {
-        logDivElement = document.getElementById('debugLog'); // Gán ở đây
-        // console.log("Sự kiện DOMContentLoaded. Trang đã tải.");
-
+        logDivElement = document.getElementById('debugLog'); 
         speechControlButton = document.getElementById('speechControlButton'); 
 
         if (typeof speechSynthesis !== 'undefined') {
-            // console.log("Trình duyệt có hỗ trợ speechSynthesis.");
             if (speechSynthesis.getVoices().length === 0) {
-                // console.log("Danh sách giọng đọc ban đầu trống, chờ onvoiceschanged.");
                 speechSynthesis.onvoiceschanged = () => {
-                    // console.log("Sự kiện onvoiceschanged được kích hoạt (sau khi chờ).");
                     populateVoiceList();
                     speechSynthesis.onvoiceschanged = null; 
                 };
             } else {
-                // console.log("Giọng đọc đã có sẵn khi DOMContentLoaded.");
                 populateVoiceList();
             }
         } else {
-            // console.warn('Text-to-Speech không được hỗ trợ. Vô hiệu hóa nút TTS.');
             if(speechControlButton) speechControlButton.disabled = true;
         }
         
         const collectionTextarea = document.getElementById('collection');
         collectionTextarea.addEventListener('input', updateSpeechControlButton);
         updateSpeechControlButton();
-
 
         const savedUrls = localStorage.getItem(URLS_STORAGE_KEY);
         if (savedUrls) { document.getElementById('urls').value = savedUrls; }
@@ -454,12 +401,48 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
         });
     });
 
-    // --- Các hàm cũ của trang (GIỮ NGUYÊN) ---
-    function getHistory() { /* ... */ }
-    function addToHistory(url) { /* ... */ }
-    async function showUrlHistory() { /* ... */ }
+    // --- PHỤC HỒI CÁC HÀM QUẢN LÝ URL VÀ TRÍCH XUẤT NỘI DUNG ---
+    function getHistory() {
+        const historyJson = localStorage.getItem(HISTORY_STORAGE_KEY);
+        return historyJson ? JSON.parse(historyJson) : [];
+    }
+
+    function addToHistory(url) {
+        let history = getHistory();
+        history = history.filter(item => item !== url);
+        history.unshift(url); // Thêm vào đầu mảng
+        history = history.slice(0, MAX_HISTORY_SIZE); // Giới hạn kích thước lịch sử
+        localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+    }
+
+    async function showUrlHistory() {
+        const history = getHistory();
+        if (history.length === 0) {
+            Swal.fire('Lịch sử trống', 'Chưa có URL nào được xử lý thành công.', 'info');
+            return;
+        }
+        const inputOptions = {};
+        history.forEach(url => { inputOptions[url] = url; });
+
+        const { value: selectedUrl } = await Swal.fire({
+            title: 'Lịch sử URL',
+            input: 'select',
+            inputOptions: inputOptions,
+            inputPlaceholder: 'Chọn một URL từ lịch sử',
+            showCancelButton: true,
+            cancelButtonText: 'Hủy',
+            confirmButtonText: 'Thêm vào ô nhập',
+        });
+
+        if (selectedUrl) {
+            const urlsTextarea = document.getElementById('urls');
+            urlsTextarea.value += (urlsTextarea.value.trim() ? '\n' : '') + selectedUrl;
+            localStorage.setItem(URLS_STORAGE_KEY, urlsTextarea.value); // Lưu lại URLs sau khi thêm từ lịch sử
+        }
+    }
+    
     async function fetchMultipleUrls() {
-        console.log("fetchMultipleUrls được gọi");
+        // console.log("fetchMultipleUrls được gọi"); // Bỏ comment nếu cần debug
         const urlsText = document.getElementById('urls').value;
         const urls = urlsText.split('\n').filter(url => url.trim());
 
@@ -468,30 +451,29 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
             return;
         }
 
-        // Đảm bảo các phần tử này tồn tại và được tham chiếu đúng
         const progressBarFill = document.getElementById('progress-bar-fill');
         const progressText = document.getElementById('progress-text');
         const progressContainer = document.getElementById('progress-container');
 
         if (!progressContainer || !progressBarFill || !progressText) {
             console.error("Một hoặc nhiều phần tử của thanh tiến trình không được tìm thấy!");
-            Swal.fire('Lỗi Giao Diện', 'Không tìm thấy thành phần thanh tiến trình. Vui lòng kiểm tra lại mã HTML.', 'error');
+            Swal.fire('Lỗi Giao Diện', 'Không tìm thấy thành phần thanh tiến trình.', 'error');
             return;
         }
 
-        progressContainer.style.display = 'block'; // Dòng này hoặc dòng dưới có thể gây lỗi nếu phần tử null
+        progressContainer.style.display = 'block'; 
         progressBarFill.style.width = '0%';
         progressText.textContent = '';
         
-        let allContent = '';
+        let allContent = ''; 
         let successCount = 0;
         let failCount = 0;
-
+        
         for (let i = 0; i < urls.length; i++) {
             const currentUrl = urls[i].trim();
             const progress = ((i + 1) / urls.length) * 100;
             
-            progressBarFill.style.width = `${progress}%`; // Lỗi có thể ở đây nếu progressBarFill là null
+            progressBarFill.style.width = `${progress}%`; 
             progressText.textContent = `Đang xử lý URL ${i + 1}/${urls.length}`;
 
             try {
@@ -512,12 +494,13 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
 
                 const data = await response.json();
                 if (data.contents && !data.contents.includes("Rate limit exceeded") && !data.contents.includes("Too Many Requests")) {
-                    const content = await extractContent(data.contents);
+                    const content = await extractContent(data.contents); // Sử dụng hàm extractContent đã định nghĩa
                     if (content) {
-                        allContent += content + '\n\n';
+                        allContent += content + '\n\n'; 
                         successCount++;
-                        addToHistory(currentUrl);
+                        addToHistory(currentUrl); // Thêm URL vào lịch sử nếu thành công
                     } else {
+                        // console.warn(`Không trích xuất được nội dung từ URL ${currentUrl}`);
                         failCount++;
                     }
                 } else {
@@ -527,17 +510,18 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
                     } else if (data.status && data.status.http_code && data.status.http_code !== 200) {
                         reason = `Trang đích trả về lỗi HTTP ${data.status.http_code}`;
                     }
+                    // console.error(`Lỗi khi lấy nội dung từ ${currentUrl}: ${reason}`);
                     failCount++;
                 }
             } catch (error) {
                 console.error(`Lỗi khi xử lý URL ${currentUrl}:`, error);
                 failCount++;
             }
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 300)); // Delay nhỏ
         }
 
         document.getElementById('collection').value = allContent.trim();
-        updateSpeechControlButton(); 
+        updateSpeechControlButton(); // Cập nhật nút Đọc sau khi có nội dung mới
         progressContainer.style.display = 'none';
         Swal.fire({
             icon: failCount > 0 ? (successCount > 0 ? 'warning' : 'error') : 'success',
@@ -545,53 +529,188 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
             text: `Thành công: ${successCount} URL\nThất bại: ${failCount} URL`,
         });
     }
-    function processText(text) { /* ... */ }
-    async function extractContent(html) { /* ... */ }
-    function generateNextUrls() { /* ... */ }
-    function replaceWithNextUrls() { /* ... */ }
-    function clearUrls() { /* ... */ }
-    async function copyToClipboard() { /* ... */ }
 
-    // Dán các hàm cũ đã được giữ nguyên vào đây
+    function processText(text) {
+        text = text.replace(/\r\n/g, '\n'); 
+        text = text.replace(/[ \t]*\n[ \t]*/g, '\n'); 
+        text = text.replace(/\n{3,}/g, '\n\n'); 
+        text = text.replace(/(?<![\.\?\!"”\)\]\}…])\s*\n(?!\s*[-–—"“‘\(\[\{A-Z0-9\d])/g, ' '); 
+        text = text.replace(/([\.!\?…])([ \t]*)(?![\n"”’\)\]\}])/g, '$1\n');
+        text = text.replace(/^\s*([-–—])\s*/gm, '\n$1 '); 
+        text = text.replace(/([-–—])([^\s])/g, '$1 $2');
+        text = text.trim();
+        return text;
+    }
 
-    // Copy lại các hàm cũ từ phiên bản trước (nếu cần)
-    // Ví dụ: getHistory, addToHistory, showUrlHistory, processText, extractContent, 
-    // generateNextUrls, replaceWithNextUrls, clearUrls, copyToClipboard
+    async function extractContent(html) {
+        if (!html) return '';
 
-    // Dưới đây là các hàm đó để bạn tiện copy (đã có ở trên, nhưng để đây cho rõ)
-    // function getHistory() { ... }
-    // function addToHistory(url) { ... }
-    // async function showUrlHistory() { ... }
-    // function processText(text) { ... }
-    // async function extractContent(html) { ... }
-    // function generateNextUrls() { ... }
-    // function replaceWithNextUrls() { ... }
-    // function clearUrls() { ... }
-    // async function copyToClipboard() { ... }
-    // (Các hàm này giữ nguyên như phiên bản trước bạn gửi cho tôi mà không có lỗi fetch)
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
 
-    // Đảm bảo các hàm này được định nghĩa đầy đủ:
-    // processText, extractContent, getHistory, addToHistory, showUrlHistory, 
-    // generateNextUrls, replaceWithNextUrls, clearUrls, copyToClipboard
+        const truyenTitleEl = doc.querySelector('.truyen-title a, .breadcrumb li:nth-last-child(2) a, h1.breadcrumb-title');
+        const chapterTitleEl = doc.querySelector('.chapter-title, h1.entry-title, .h1 DBMana-chapter');
+        let title = '';
+        const truyenTitle = truyenTitleEl ? truyenTitleEl.textContent.trim() : '';
+        const chapterTitle = chapterTitleEl ? chapterTitleEl.textContent.trim() : '';
 
-    // (Dán các hàm cũ đầy đủ vào đây)
-    // Đã dán các hàm cũ ở trên, bạn chỉ cần kiểm tra lại
+        if (truyenTitle && chapterTitle) {
+            title = `${truyenTitle.toUpperCase()} - ${chapterTitle.toUpperCase()}\n\n`;
+        } else if (chapterTitle) {
+            title = `${chapterTitle.toUpperCase()}\n\n`;
+        }
+
+        let chapterContentElement = doc.querySelector('#chapter-c, .entry-content, .reading-content, #content, article .text-left, #vung_doc, .chapter-content');
+        if (!chapterContentElement) {
+            // console.error('Không tìm thấy phần tử nội dung chính.');
+            return '';
+        }
+
+        const selectorsToRemove = [
+            '.ads-responsive', '.ads-chapter-bottom-lien-quan', 'script', 'style',
+            'iframe', 'ins', '.hidden', '[style*="display:none"]', '[style*="display: none"]',
+            '#comment', '.wpd-comment-thread', '.nav-links', '.chapter-nav',
+            'a[href*="truyenfull"]', 'a[href*="nettruyen"]', 'a[href*="metruyenchu"]',
+            'div[class*="google"]', 'div[id*="google"]',
+            'div[class*="ads"]', 'div[id*="ads"]',
+            'button', 'input', 'select', 'textarea', // Loại bỏ các nút, input trong nội dung
+            '.interact-area', '#report-chapter-button', '.footer', 'footer',
+            '.notes', '.navigation-panel', '.chapter-selection', '.fb-comments', '.comments-area'
+        ];
+        chapterContentElement.querySelectorAll(selectorsToRemove.join(', ')).forEach(el => el.remove());
+
+        let content = '';
+        const paragraphs = chapterContentElement.querySelectorAll('p');
+        if (paragraphs.length > 10) { 
+            paragraphs.forEach(p => {
+                const pText = p.textContent.replace(/\s+/g, ' ').trim();
+                if (pText && !pText.toLowerCase().includes("truyện được sưu tầm") && !pText.toLowerCase().includes("nguồn tại")) { 
+                    content += pText + '\n\n';
+                }
+            });
+        } else {
+            const walker = doc.createTreeWalker(
+                chapterContentElement,
+                NodeFilter.SHOW_TEXT,
+                { acceptNode: function(node) {
+                    if (!node.parentNode || ['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(node.parentNode.tagName) || !node.textContent.trim()) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    return NodeFilter.FILTER_ACCEPT;
+                  }
+                }
+            );
+            let node;
+            while(node = walker.nextNode()) {
+                content += node.textContent.trim() + ' '; 
+            }
+            content = content.replace(/\s+/g, ' '); 
+        }
+
+        const linesToRemove = [
+            /truyện được cập nhật tại .*/i,
+            /nguồn truyện: .*/i,
+            /đọc truyện tại .*/i,
+            /mời bạn đọc thêm nhiều truyện hay tại .*/i,
+            /hãy bình chọn cho truyện/i,
+            /.*(like|share|vote).*ủng hộ.*/i,
+            /^ps:.*$/i, 
+            /^\(.*\)$/ 
+        ];
+        let lines = content.split('\n');
+        lines = lines.filter(line => {
+            const trimmedLine = line.trim();
+            if (!trimmedLine) return false; 
+            for (const regex of linesToRemove) {
+                if (regex.test(trimmedLine)) return false; 
+            }
+            return true;
+        });
+        content = lines.join('\n');
+        content = processText(content.trim());
+        return title + content;
+    }
+
+    function generateNextUrls() {
+        const urlsText = document.getElementById('urls').value.trim();
+        if (!urlsText) {
+            Swal.fire('Cảnh báo', 'Vui lòng nhập ít nhất một URL.', 'warning');
+            return;
+        }
+        const lines = urlsText.split('\n').filter(line => line.trim());
+        const lastUrl = lines[lines.length - 1];
+        const chapterMatch = lastUrl.match(/(?:chuong|chapter)-(\d+)/i);
+        if (!chapterMatch || chapterMatch.length < 2) {
+            Swal.fire('Lỗi', 'Không tìm thấy mẫu số chương (ví dụ: chuong-123 hoặc chapter-123) trong URL cuối cùng.', 'error');
+            return;
+        }
+        const chapterNum = parseInt(chapterMatch[1]);
+        const prefix = chapterMatch[0].split('-')[0];
+        const baseUrl = lastUrl.substring(0, chapterMatch.index);
+        const suffix = lastUrl.substring(chapterMatch.index + chapterMatch[0].length);
+        let newUrls = '';
+        for (let i = 1; i <= 3; i++) { // Tạo 3 URL tiếp theo
+            const nextChapter = chapterNum + i;
+            newUrls += `${baseUrl}${prefix}-${nextChapter}${suffix}\n`;
+        }
+        const urlsTextarea = document.getElementById('urls');
+        urlsTextarea.value = urlsText + '\n' + newUrls.trim();
+        localStorage.setItem(URLS_STORAGE_KEY, urlsTextarea.value); // Lưu lại URLs
+    }
+
+    function replaceWithNextUrls() {
+        const urlsText = document.getElementById('urls').value.trim();
+        if (!urlsText) {
+            Swal.fire('Cảnh báo', 'Vui lòng nhập ít nhất một URL.', 'warning');
+            return;
+        }
+        const lines = urlsText.split('\n').filter(line => line.trim());
+        const lastUrl = lines[lines.length - 1];
+
+        const chapterMatch = lastUrl.match(/(?:chuong|chapter)-(\d+)/i);
+        if (!chapterMatch || chapterMatch.length < 2) {
+            Swal.fire('Lỗi', 'Không tìm thấy mẫu số chương (ví dụ: chuong-123 hoặc chapter-123) trong URL cuối cùng.', 'error');
+            return;
+        }
+        const chapterNum = parseInt(chapterMatch[1]);
+        const prefix = chapterMatch[0].split('-')[0];
+        const baseUrl = lastUrl.substring(0, chapterMatch.index);
+        const suffix = lastUrl.substring(chapterMatch.index + chapterMatch[0].length);
+
+        let newUrls = '';
+        for (let i = 1; i <= 4; i++) { // Tạo 4 URL mới
+            const nextChapter = chapterNum + i;
+            newUrls += `${baseUrl}${prefix}-${nextChapter}${suffix}\n`;
+        }
+        const urlsTextarea = document.getElementById('urls');
+        urlsTextarea.value = newUrls.trim(); // Xóa URL cũ và thay bằng URL mới
+        localStorage.setItem(URLS_STORAGE_KEY, urlsTextarea.value); // Lưu lại URLs
+    }
+
+    function clearUrls() {
+        const urlsTextarea = document.getElementById('urls');
+        urlsTextarea.value = '';
+        localStorage.removeItem(URLS_STORAGE_KEY); // Xóa khỏi localStorage
+    }
+
+    async function copyToClipboard() {
+        const text = document.getElementById('collection').value;
+        if (!text.trim()) {
+            Swal.fire('Thông báo', 'Không có nội dung để sao chép.', 'info');
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(text);
+            Swal.fire('Đã sao chép!', 'Nội dung đã được sao chép vào clipboard', 'success');
+        } catch (err) {
+            // console.error('Không thể sao chép vào clipboard:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi sao chép tự động',
+                text: 'Không thể tự động sao chép. Vui lòng chọn thủ công.',
+            });
+        }
+    }
     </script>
 </body>
 </html>
-```
-
-Trong phiên bản này, tôi đã:
-1.  **Khôi phục cấu trúc HTML đầy đủ cho thanh tiến trình** trong phần `div` có `id="urls"`.
-    ```html
-            <div id="progress-container">
-                <div id="progress-bar">
-                    <div id="progress-bar-fill"></div>
-                </div>
-                <p id="progress-text"></p>
-            </div>
-    ```
-2.  Thêm một kiểm tra nhỏ trong `WorkspaceMultipleUrls` để log lỗi ra console nếu các phần tử của thanh tiến trình không được tìm thấy, giúp dễ gỡ lỗi hơn nếu vấn đề tương tự xảy ra.
-3.  Các `console.log` trong phần TTS đã được comment bớt lại (ngoại trừ `console.error` cho lỗi TTS thực sự) để log trên trang đỡ bị nhiễu bởi thông tin TTS, giúp bạn tập trung vào log của `WorkspaceMultipleUrls` nếu lỗi vẫn còn. Bạn có thể bỏ comment chúng nếu cần debug TTS.
-
-Hãy thử lại chức năng "Lấy nội dung tất cả URLs" với phiên bản này và xem lỗi có còn không n
