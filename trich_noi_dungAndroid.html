@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trích xuất nội dung truyện (TTS - Phục hồi & Sửa lỗi Chunk v6)</title>
+    <title>Trích xuất nội dung truyện (TTS - Chia Chunk Nâng Cao - Debug)</title>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
@@ -127,7 +127,7 @@
     </style>
 </head>
 <body>
-    <h1>Trích xuất nội dung truyện (TTS - Phục hồi & Sửa lỗi Chunk v6)</h1>
+    <h1>Trích xuất nội dung truyện (TTS - Chia Chunk Nâng Cao - Debug)</h1>
 
     <div>
         <h3>1. Nhập URLs (mỗi URL một dòng):</h3>
@@ -308,7 +308,6 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
                 if (currentChunkIndex < speechChunks.length) {
                     console.log(`onend: Scheduling speakNextChunk for new index ${currentChunkIndex} after 750ms delay. States before timeout: speaking=${speechSynthesis.speaking}, pending=${speechSynthesis.pending}`);
                     
-                    // Bắt buộc cancel trước khi đặt timeout cho chunk tiếp theo
                     if (speechSynthesis.speaking || speechSynthesis.pending) {
                         console.warn("onend: TTS engine still speaking/pending. Cancelling forcefully before scheduling next chunk.");
                         speechSynthesis.cancel(); 
@@ -317,14 +316,13 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
                     setTimeout(() => {
                         console.log(`setTimeout in onend: current ttsState=${ttsState}, currentChunkIndex=${currentChunkIndex}, speechChunks.length=${speechChunks.length}. States before speakNextChunk: speaking=${speechSynthesis.speaking}, pending=${speechSynthesis.pending}`);
                         if (ttsState === 'playing' && currentChunkIndex < speechChunks.length) { 
-                           // Kiểm tra lại lần nữa, nếu vẫn bận thì cancel và thử lại với delay nhỏ
                            if (speechSynthesis.speaking || speechSynthesis.pending) { 
                                console.warn("TTS engine still speaking/pending AT THE MOMENT OF starting next chunk from onend. Cancelling again.");
                                speechSynthesis.cancel(); 
                                setTimeout(() => { 
                                    console.log("speakNextChunk được gọi từ setTimeout trong onend (sau DOUBLE cancel và delay thêm).");
                                    speakNextChunk();
-                               }, 200); // Delay nhỏ hơn sau khi cancel lần 2
+                               }, 200); 
                            } else {
                                console.log("speakNextChunk được gọi từ setTimeout trong onend (direct).");
                                speakNextChunk(); 
@@ -370,7 +368,6 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
         };
         
         try {
-            // Đảm bảo không có gì đang nói trước khi bắt đầu chunk mới
             if (speechSynthesis.speaking || speechSynthesis.pending) {
                 console.warn("speakNextChunk: TTS engine is speaking/pending before new speak. Cancelling first.");
                 speechSynthesis.cancel();
@@ -431,17 +428,72 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
                 return;
             }
 
-            speechChunks = fullText.split(/\n\s*\n+/).map(chunk => chunk.trim()).filter(chunk => chunk !== '');
-            if (speechChunks.length === 0 && fullText.trim() !== '') {
-                speechChunks = [fullText.trim()];
+            // --- BẮT ĐẦU LOGIC CHIA NHỎ CHUNK (THEO ĐỀ XUẤT CỦA BẠN) ---
+            let initialSpeechChunks = fullText.split(/\n\s*\n+/).map(chunk => chunk.trim()).filter(chunk => chunk !== '');
+            if (initialSpeechChunks.length === 0 && fullText.trim() !== '') {
+                initialSpeechChunks = [fullText.trim()];
             }
+            
+            const MAX_CHUNK_LENGTH = 250; 
+            let refinedSpeechChunks = [];
+
+            initialSpeechChunks.forEach(chunk => {
+                if (chunk.length <= MAX_CHUNK_LENGTH) {
+                    refinedSpeechChunks.push(chunk);
+                } else {
+                    console.log(`Chunk gốc quá dài (${chunk.length} ký tự), đang chia nhỏ: "${chunk.substring(0,50)}..."`);
+                    let currentPosition = 0;
+                    while (currentPosition < chunk.length) {
+                        let endPosition = currentPosition + MAX_CHUNK_LENGTH;
+                        let subChunk;
+
+                        if (endPosition >= chunk.length) { // Nếu đây là phần cuối cùng của chunk
+                            subChunk = chunk.substring(currentPosition);
+                        } else {
+                            // Cố gắng tìm điểm cắt tự nhiên
+                            let tempSubChunk = chunk.substring(currentPosition, endPosition);
+                            let cutAt = -1;
+                            // Ưu tiên dấu câu gần cuối sub-chunk
+                            ['.', '!', '?'].forEach(punc => {
+                                let puncPos = tempSubChunk.lastIndexOf(punc);
+                                if (puncPos > MAX_CHUNK_LENGTH / 2) { // Chỉ cắt nếu dấu câu không quá sớm
+                                    cutAt = Math.max(cutAt, puncPos);
+                                }
+                            });
+
+                            if (cutAt !== -1) { // Tìm thấy dấu câu phù hợp
+                                subChunk = tempSubChunk.substring(0, cutAt + 1);
+                            } else { // Nếu không, thử cắt ở khoảng trắng gần nhất
+                                let lastSpace = tempSubChunk.lastIndexOf(' ');
+                                if (lastSpace > MAX_CHUNK_LENGTH / 2) { // Chỉ cắt ở khoảng trắng nếu nó không quá sớm
+                                    subChunk = tempSubChunk.substring(0, lastSpace);
+                                } else { // Cắt cứng ở MAX_CHUNK_LENGTH
+                                    subChunk = tempSubChunk;
+                                }
+                            }
+                        }
+                        
+                        refinedSpeechChunks.push(subChunk.trim());
+                        currentPosition += subChunk.length;
+                        // Bỏ qua khoảng trắng ở đầu sub-chunk tiếp theo nếu có
+                        while(currentPosition < chunk.length && chunk[currentPosition] === ' ') { 
+                            currentPosition++;
+                        }
+                        console.log(`  Đã tạo sub-chunk: "${subChunk.trim().substring(0,50)}...", new currentPosition: ${currentPosition}`);
+                    }
+                }
+            });
+            speechChunks = refinedSpeechChunks.filter(c => c.trim() !== ""); 
+            // --- KẾT THÚC LOGIC CHIA NHỎ CHUNK ---
+
+
             if (speechChunks.length === 0) {
-                 Swal.fire('Thông báo', 'Nội dung không hợp lệ để đọc.', 'info');
+                 Swal.fire('Thông báo', 'Nội dung không hợp lệ để đọc sau khi xử lý.', 'info');
                  updateSpeechControlButton();
                  return;
             }
             
-            console.log(`Đã chia văn bản thành ${speechChunks.length} chunk(s).`);
+            console.log(`Đã chia văn bản thành ${speechChunks.length} chunk(s) (sau khi tinh chỉnh).`);
             currentChunkIndex = 0;
             ttsState = 'playing'; 
             speakNextChunk();
