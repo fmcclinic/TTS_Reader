@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trích xuất nội dung truyện (TTS - Sửa lỗi Chunk & Fetch - v3)</title>
+    <title>Trích xuất nội dung truyện (TTS - Sửa lỗi Chunk & Fetch - v4)</title>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
@@ -127,7 +127,7 @@
     </style>
 </head>
 <body>
-    <h1>Trích xuất nội dung truyện (TTS - Sửa lỗi Chunk & Fetch - v3)</h1>
+    <h1>Trích xuất nội dung truyện (TTS - Sửa lỗi Chunk & Fetch - v4)</h1>
 
     <div>
         <h3>1. Nhập URLs (mỗi URL một dòng):</h3>
@@ -274,7 +274,9 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
         }
 
         const chunkText = speechChunks[currentChunkIndex];
-        console.log(`Chuẩn bị đọc chunk ${currentChunkIndex + 1}/${speechChunks.length}: "${chunkText.substring(0, 50)}..."`);
+        // Log toàn bộ chunk để kiểm tra nội dung
+        console.log(`Chuẩn bị đọc chunk ${currentChunkIndex + 1}/${speechChunks.length}: TEXT_START>>>${chunkText}<<<TEXT_END`);
+
 
         currentUtterance = new SpeechSynthesisUtterance(chunkText);
         currentUtterance.lang = 'vi-VN';
@@ -309,13 +311,13 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
                     setTimeout(() => {
                         console.log(`setTimeout in onend: current ttsState=${ttsState}, currentChunkIndex=${currentChunkIndex}, speechChunks.length=${speechChunks.length}. States before speakNextChunk: speaking=${speechSynthesis.speaking}, pending=${speechSynthesis.pending}`);
                         if (ttsState === 'playing' && currentChunkIndex < speechChunks.length) { 
-                           if (speechSynthesis.speaking || speechSynthesis.pending) {
+                           if (speechSynthesis.speaking || speechSynthesis.pending) { // Kiểm tra lại trước khi nói
                                console.warn("TTS engine still speaking/pending before starting next chunk from onend. Cancelling first.");
-                               speechSynthesis.cancel();
-                               setTimeout(() => {
-                                   console.log("speakNextChunk được gọi từ setTimeout trong onend (sau cancel).");
+                               speechSynthesis.cancel(); // Hủy bỏ mọi thứ đang chờ
+                               setTimeout(() => { // Thêm một độ trễ nhỏ sau khi cancel
+                                   console.log("speakNextChunk được gọi từ setTimeout trong onend (sau cancel và delay thêm).");
                                    speakNextChunk();
-                               }, 100); 
+                               }, 100); // Delay nhỏ sau cancel
                            } else {
                                console.log("speakNextChunk được gọi từ setTimeout trong onend (direct).");
                                speakNextChunk(); 
@@ -325,7 +327,7 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
                             if (ttsState !== 'paused') ttsState = 'idle'; 
                             updateSpeechControlButton();
                         }
-                    }, 750); // Tăng delay lên 750ms
+                    }, 750); // Giữ delay 750ms
                 } else {
                     console.log("Đã đọc hết tất cả các chunk. Chuyển ttsState sang 'idle'.");
                     ttsState = 'idle';
@@ -361,8 +363,19 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
         };
         
         try {
-            speechSynthesis.speak(currentUtterance);
-            console.log(`Đã gọi speechSynthesis.speak() cho chunk ${currentChunkIndex + 1}.`);
+            // Đảm bảo không có gì đang nói trước khi bắt đầu chunk mới
+            if (speechSynthesis.speaking || speechSynthesis.pending) {
+                console.warn("speakNextChunk: TTS engine is speaking/pending before new speak. Cancelling first.");
+                speechSynthesis.cancel();
+                // Cần một chút thời gian để cancel() hoàn tất
+                setTimeout(() => {
+                    console.log("Gọi speechSynthesis.speak() cho chunk (sau cancel trong speakNextChunk).");
+                    speechSynthesis.speak(currentUtterance);
+                }, 100); // Delay nhỏ
+            } else {
+                speechSynthesis.speak(currentUtterance);
+                console.log(`Đã gọi speechSynthesis.speak() cho chunk ${currentChunkIndex + 1}.`);
+            }
         } catch (e) {
             console.error(`Lỗi trực tiếp khi gọi speechSynthesis.speak() cho chunk ${currentChunkIndex + 1}:`, e);
             Swal.fire('Lỗi nghiêm trọng TTS', `Lỗi khi gọi hàm speak: ${e.message}`, 'error');
@@ -603,13 +616,41 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
     }
 
     function processText(text) {
-        text = text.replace(/\r\n/g, '\n'); 
-        text = text.replace(/[ \t]*\n[ \t]*/g, '\n'); 
-        text = text.replace(/\n{3,}/g, '\n\n'); 
-        text = text.replace(/(?<![\.\?\!"”\)\]\}…])\s*\n(?!\s*[-–—"“‘\(\[\{A-Z0-9\d])/g, ' '); 
+        // Normalize line breaks
+        text = text.replace(/\r\n/g, '\n');
+        text = text.replace(/\r/g, '\n');
+
+        // Remove non-printable characters except for common whitespace (\n, \t, \r)
+        // and a curated list of "safe" punctuation and Vietnamese characters.
+        // This is more aggressive than before.
+        // \x20-\x7E: Basic Latin (printable ASCII)
+        // \u00A0-\u024F: Latin Extended-A, Latin Extended-B, IPA Extensions, Spacing Modifier Letters
+        // \u1E00-\u1EFF: Latin Extended Additional (includes many Vietnamese characters)
+        // \u2000-\u206F: General Punctuation (includes various spaces, dashes, quotes)
+        // Vietnamese specific characters are also in \u0100-\u017F (Latin Extended-A) and \u0250-\u02AF (IPA Extensions for tones)
+        // Common punctuation: . , ; : ! ? ( ) [ ] { } " ' “ ” ‘ ’ « » ‹ › – — … % / + - = * & ^ $ # @ ~ ` |
+        // Added Vietnamese specific characters explicitly for clarity if not fully covered by ranges.
+        const vietnameseChars = "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ";
+        const safeCharsRegex = new RegExp(`[^\\x20-\\x7E\\u00A0-\\u024F\\u1E00-\\u1EFF\\u2000-\\u206F${vietnameseChars}\\n\\t\\r.,;:!?()\\[\\]{}“”‘’«»‹›–—…%/+\\-=*&^$#@~\`|]`, "gu");
+        text = text.replace(safeCharsRegex, '');
+
+
+        // Replace multiple spaces with a single space
+        text = text.replace(/ {2,}/g, ' ');
+        // Remove spaces around newlines
+        text = text.replace(/[ \t]*\n[ \t]*/g, '\n');
+        // Ensure max two consecutive newlines
+        text = text.replace(/\n{3,}/g, '\n\n');
+        
+        // Attempt to join lines (carefully)
+        text = text.replace(/(?<![\.\?\!"”\)\]\}…:])\s*\n(?!\s*[-–—"“‘\(\[\{A-Z0-9\d\p{Lu}])/gu, ' ');
+
+        // Add newline after sentence-ending punctuation
         text = text.replace(/([\.!\?…])([ \t]*)(?![\n"”’\)\]\}])/g, '$1\n');
-        text = text.replace(/^\s*([-–—])\s*/gm, '\n$1 '); 
+        // Handle dialogue hyphens
+        text = text.replace(/^\s*([-–—])\s*/gm, '\n$1 ');
         text = text.replace(/([-–—])([^\s])/g, '$1 $2');
+        
         text = text.trim();
         return text;
     }
@@ -686,7 +727,8 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
             return true;
         });
         content = lines.join('\n');
-        content = processText(content.trim());
+        // QUAN TRỌNG: Gọi processText ở đây để làm sạch nội dung trích xuất
+        content = processText(content.trim()); 
         return title + content;
     }
 
