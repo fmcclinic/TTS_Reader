@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trích xuất nội dung truyện (TTS - Sửa lỗi Chunk & Fetch)</title>
+    <title>Trích xuất nội dung truyện (TTS - Sửa lỗi Chunk & Fetch - v2)</title>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
@@ -127,7 +127,7 @@
     </style>
 </head>
 <body>
-    <h1>Trích xuất nội dung truyện (TTS - Sửa lỗi Chunk & Fetch)</h1>
+    <h1>Trích xuất nội dung truyện (TTS - Sửa lỗi Chunk & Fetch - v2)</h1>
 
     <div>
         <h3>1. Nhập URLs (mỗi URL một dòng):</h3>
@@ -249,12 +249,12 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
             speechControlButton.textContent = 'Đọc';
             speechControlButton.disabled = !hasText || !ttsVoicesLoadedAtLeastOnce; 
             if (!ttsVoicesLoadedAtLeastOnce) {
-                // console.warn("Nút Đọc bị vô hiệu hóa vì TTS chưa sẵn sàng (giọng đọc chưa tải).");
+                console.warn("Nút Đọc bị vô hiệu hóa vì TTS chưa sẵn sàng (giọng đọc chưa tải).");
             } else if (!hasText) {
-                // console.log("Nút Đọc bị vô hiệu hóa vì không có nội dung.");
+                console.log("Nút Đọc bị vô hiệu hóa vì không có nội dung.");
             }
         }
-        // console.log(`Nút điều khiển được cập nhật: Text='${speechControlButton.textContent}', Disabled=${speechControlButton.disabled}, State=${ttsState}`);
+        console.log(`Nút điều khiển được cập nhật: Text='${speechControlButton.textContent}', Disabled=${speechControlButton.disabled}, State=${ttsState}`);
     }
 
     function speakNextChunk() {
@@ -296,15 +296,16 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
 
         currentUtterance.onend = (event) => {
             console.log(`Sự kiện onend cho chunk ${currentChunkIndex + 1}. Hiện tại ttsState=${ttsState}, speechSynthesis.speaking=${speechSynthesis.speaking}, speechSynthesis.paused=${speechSynthesis.paused}`, event);
+            const previousUtteranceText = currentUtterance ? currentUtterance.text.substring(0,30) : "N/A"; 
             currentUtterance = null; 
 
             if (ttsState === 'playing') { 
-                console.log(`onend: ttsState is 'playing'. Incrementing chunk index from ${currentChunkIndex}.`);
+                console.log(`onend: ttsState is 'playing'. Incrementing chunk index from ${currentChunkIndex}. Utterance was: ${previousUtteranceText}`);
                 currentChunkIndex++;
                 if (currentChunkIndex < speechChunks.length) {
-                    console.log(`onend: Scheduling speakNextChunk for new index ${currentChunkIndex} after a short delay.`);
-                    // SỬA LỖI: Thêm delay trước khi đọc chunk tiếp theo
+                    console.log(`onend: Scheduling speakNextChunk for new index ${currentChunkIndex} after 500ms delay.`); // TĂNG DELAY
                     setTimeout(() => {
+                        console.log(`setTimeout in onend: current ttsState=${ttsState}, currentChunkIndex=${currentChunkIndex}, speechChunks.length=${speechChunks.length}`);
                         if (ttsState === 'playing' && currentChunkIndex < speechChunks.length) { 
                            console.log("speakNextChunk được gọi từ setTimeout trong onend.");
                            speakNextChunk(); 
@@ -313,7 +314,7 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
                             if (ttsState !== 'paused') ttsState = 'idle'; 
                             updateSpeechControlButton();
                         }
-                    }, 250); // Delay 250ms
+                    }, 500); // Delay 500ms (tăng từ 250ms)
                 } else {
                     console.log("Đã đọc hết tất cả các chunk. Chuyển ttsState sang 'idle'.");
                     ttsState = 'idle';
@@ -504,7 +505,7 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
     }
     
     async function fetchMultipleUrls() {
-        // console.log("fetchMultipleUrls được gọi"); 
+        console.log("fetchMultipleUrls được gọi"); 
         const urlsText = document.getElementById('urls').value;
         const urls = urlsText.split('\n').filter(url => url.trim());
 
@@ -738,6 +739,8 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
         const urlsTextarea = document.getElementById('urls');
         urlsTextarea.value = '';
         localStorage.removeItem(URLS_STORAGE_KEY); 
+        document.getElementById('collection').value = ''; // Cũng xóa nội dung đã tổng hợp
+        updateSpeechControlButton(); // Cập nhật trạng thái nút Đọc
     }
 
     async function copyToClipboard() {
