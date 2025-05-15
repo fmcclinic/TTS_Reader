@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trích xuất nội dung truyện (Phục hồi chức năng & Sửa TTS)</title>
+    <title>Trích xuất nội dung truyện (TTS - Sửa lỗi Chunk & Fetch - v5)</title>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
@@ -127,11 +127,11 @@
     </style>
 </head>
 <body>
-    <h1>Trích xuất nội dung truyện (Phục hồi chức năng & Sửa TTS)</h1>
+    <h1>Trích xuất nội dung truyện (TTS - Sửa lỗi Chunk & Fetch - v5)</h1>
 
     <div>
         <h3>1. Nhập URLs (mỗi URL một dòng):</h3>
-        <textarea id="urls" rows="5" cols="80" placeholder="https://truyenfull.bio/cuu-thien-kiem-ss-ha-than/chuong-110/"></textarea>
+        <textarea id="urls" rows="5" cols="80" placeholder="https://truyenfull.vision/ba-vo-khai-hoang/chuong-2117/"></textarea>
         <div id="progress-container">
             <div id="progress-bar">
                 <div id="progress-bar-fill"></div>
@@ -274,6 +274,7 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
         }
 
         const chunkText = speechChunks[currentChunkIndex];
+        // Log toàn bộ chunk để kiểm tra nội dung
         console.log(`Chuẩn bị đọc chunk ${currentChunkIndex + 1}/${speechChunks.length}: TEXT_START>>>${chunkText}<<<TEXT_END`);
 
 
@@ -316,7 +317,7 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
                                setTimeout(() => { 
                                    console.log("speakNextChunk được gọi từ setTimeout trong onend (sau cancel và delay thêm).");
                                    speakNextChunk();
-                               }, 100); 
+                               }, 150); // Tăng nhẹ delay sau cancel
                            } else {
                                console.log("speakNextChunk được gọi từ setTimeout trong onend (direct).");
                                speakNextChunk(); 
@@ -368,7 +369,7 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
                 setTimeout(() => {
                     console.log("Gọi speechSynthesis.speak() cho chunk (sau cancel trong speakNextChunk).");
                     speechSynthesis.speak(currentUtterance);
-                }, 100); 
+                }, 150); // Tăng nhẹ delay sau cancel
             } else {
                 speechSynthesis.speak(currentUtterance);
                 console.log(`Đã gọi speechSynthesis.speak() cho chunk ${currentChunkIndex + 1}.`);
@@ -544,9 +545,11 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
             Swal.fire('Lỗi Giao Diện', 'Không tìm thấy thành phần thanh tiến trình.', 'error');
             return;
         }
-
+        console.log("Thanh tiến trình: Hiển thị container.");
         progressContainer.style.display = 'block'; 
+        console.log("Thanh tiến trình: Đặt width fill = 0%.");
         progressBarFill.style.width = '0%';
+        console.log("Thanh tiến trình: Xóa text.");
         progressText.textContent = '';
         
         let allContent = ''; 
@@ -557,6 +560,7 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
             const currentUrl = urls[i].trim();
             const progress = ((i + 1) / urls.length) * 100;
             
+            console.log(`Thanh tiến trình: URL ${i+1}, progress ${progress}%`);
             progressBarFill.style.width = `${progress}%`; 
             progressText.textContent = `Đang xử lý URL ${i + 1}/${urls.length}`;
 
@@ -604,6 +608,7 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
 
         document.getElementById('collection').value = allContent.trim();
         updateSpeechControlButton(); 
+        console.log("Thanh tiến trình: Ẩn container.");
         progressContainer.style.display = 'none';
         Swal.fire({
             icon: failCount > 0 ? (successCount > 0 ? 'warning' : 'error') : 'success',
@@ -612,20 +617,15 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
         });
     }
 
-    // SỬA LẠI HÀM processText VỀ PHIÊN BẢN GỐC ĐƠN GIẢN HƠN
+    // SỬA LẠI HÀM processText VỀ PHIÊN BẢN GỐC ĐƠN GIẢN HƠN + THÊM \u00A0
     function processText(text) {
-        // Chuẩn hóa xuống dòng và khoảng trắng
-        text = text.replace(/\r\n/g, '\n'); // Đảm bảo chỉ có \n
-        text = text.replace(/[ \t]*\n[ \t]*/g, '\n'); // Xóa khoảng trắng thừa quanh \n
-        text = text.replace(/\n{3,}/g, '\n\n'); // Tối đa 2 dòng trắng liên tiếp
+        text = text.replace(/\u00A0/g, ' '); // Thay thế non-breaking space
 
-        // Nối dòng nếu không phải cuối câu hoặc bắt đầu đoạn mới
+        text = text.replace(/\r\n/g, '\n'); 
+        text = text.replace(/[ \t]*\n[ \t]*/g, '\n'); 
+        text = text.replace(/\n{3,}/g, '\n\n'); 
         text = text.replace(/(?<![\.\?\!"”\)\]\}…])\s*\n(?!\s*[-–—"“‘\(\[\{A-Z0-9\d])/g, ' '); 
-
-        // Thêm xuống dòng sau dấu chấm câu nếu chưa có và không theo sau bởi dấu đóng ngoặc/nháy
         text = text.replace(/([\.!\?…])([ \t]*)(?![\n"”’\)\]\}])/g, '$1\n');
-
-        // Xử lý dấu gạch đầu dòng cho hội thoại
         text = text.replace(/^\s*([-–—])\s*/gm, '\n$1 '); 
         text = text.replace(/([-–—])([^\s])/g, '$1 $2');
         
@@ -705,7 +705,7 @@ Một người trong đó mặc áo bào tím thêu hoa văn mãng xà, thân h�
             return true;
         });
         content = lines.join('\n');
-        content = processText(content.trim()); // Gọi hàm processText đã được sửa
+        content = processText(content.trim()); 
         return title + content;
     }
 
