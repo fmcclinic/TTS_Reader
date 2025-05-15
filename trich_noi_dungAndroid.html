@@ -231,10 +231,16 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
 
     function speakNextChunk() {
         console.log(`speakNextChunk: ttsState=${ttsState}, currentChunkIndex=${currentChunkIndex}, totalChunks=${speechChunks.length}`);
+        // Chỉ đọc nếu đang ở trạng thái 'playing' và còn chunk để đọc
         if (ttsState !== 'playing' || currentChunkIndex >= speechChunks.length) {
-            console.log("Kết thúc hàng đợi đọc chunk hoặc đã dừng/tạm dừng hoàn toàn.");
-            if (ttsState !== 'paused') { 
+            console.log("speakNextChunk: Không đọc. Lý do: ttsState không phải 'playing' hoặc đã hết chunk.");
+            if (ttsState !== 'paused' && currentChunkIndex >= speechChunks.length) { 
+                 // Nếu đã đọc hết và không phải đang tạm dừng, thì chuyển về idle
+                 console.log("speakNextChunk: Đã đọc hết tất cả các chunk. Chuyển ttsState sang 'idle'.");
                  ttsState = 'idle';
+            } else if (ttsState !== 'paused') {
+                // Nếu bị dừng từ bên ngoài (không phải pause)
+                ttsState = 'idle';
             }
             updateSpeechControlButton();
             return;
@@ -247,9 +253,10 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
         currentUtterance.lang = 'vi-VN';
 
         currentUtterance.onstart = (event) => {
-            console.log(`Sự kiện onstart cho chunk ${currentChunkIndex + 1}.`, event);
+            console.log(`Sự kiện onstart cho chunk ${currentChunkIndex + 1}. Hiện tại ttsState=${ttsState}`, event);
+            // Đảm bảo trạng thái là playing, đặc biệt quan trọng sau khi "Tiếp tục"
             if (ttsState !== 'playing') {
-                console.warn("onstart được gọi nhưng ttsState không phải 'playing'. Đặt lại thành 'playing'.");
+                console.warn("onstart được gọi nhưng ttsState không phải 'playing'. Cập nhật thành 'playing'.");
                 ttsState = 'playing';
             }
             updateSpeechControlButton(); 
@@ -285,9 +292,8 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
                  if (currentChunkIndex >= speechChunks.length) {
                      console.log("Đã ở cuối danh sách chunk trong khi paused và onend được gọi. Chuyển về idle.");
                      ttsState = 'idle';
-                     updateSpeechControlButton();
                  }
-                 // Nút vẫn là "Tiếp tục", đợi người dùng nhấn.
+                 updateSpeechControlButton(); // Nút vẫn là "Tiếp tục"
             } else { 
                 console.log(`onend được gọi nhưng ttsState là '${ttsState}'. Không đọc chunk tiếp theo.`);
                 updateSpeechControlButton(); 
@@ -296,13 +302,20 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
 
         currentUtterance.onerror = (event) => {
             console.error(`Sự kiện onerror TTS cho chunk ${currentChunkIndex + 1}:`, event.error, event);
-            if (ttsState !== 'idle' && !(event.error === 'canceled' || event.error === 'interrupted')) {
+            // Chỉ hiển thị lỗi nếu không phải do người dùng chủ động cancel/interrupt
+            // khi ttsState đã được chuyển sang 'idle' bởi handleSpeechControl (khi bắt đầu đọc mới)
+            // hoặc khi ttsState là 'paused' (do cancel để tạm dừng)
+            if (ttsState !== 'idle' && ttsState !== 'paused' && !(event.error === 'canceled' || event.error === 'interrupted')) {
                 let displayError = event.error ? event.error : "Lỗi không xác định";
                 Swal.fire('Lỗi đọc TTS', `Đã xảy ra lỗi khi đọc chunk ${currentChunkIndex + 1}: ${displayError}.`, 'error');
             } else {
                 console.warn(`Lỗi onerror (${event.error}) được bỏ qua do ttsState là '${ttsState}' hoặc lỗi là 'canceled'/'interrupted'.`);
             }
-            ttsState = 'idle'; 
+            // Nếu lỗi không phải do cancel khi đang playing (mà là lỗi thực sự), thì reset về idle.
+            // Nếu lỗi là 'canceled' và ttsState là 'paused', thì giữ nguyên 'paused'.
+            if (!( (event.error === 'canceled' || event.error === 'interrupted') && ttsState === 'paused') ) {
+                ttsState = 'idle'; 
+            }
             updateSpeechControlButton();
             currentUtterance = null;
         };
@@ -348,7 +361,7 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
             console.log("Trạng thái 'idle': Bắt đầu đọc mới / Đọc lại từ đầu.");
             if(speechSynthesis.speaking || speechSynthesis.pending || speechSynthesis.paused) { 
                 console.log(`Hủy bỏ việc đọc/chờ đọc/đang tạm dừng cũ. Speaking: ${speechSynthesis.speaking}, Pending: ${speechSynthesis.pending}, Paused: ${speechSynthesis.paused}`);
-                speechSynthesis.cancel(); 
+                speechSynthesis.cancel(); // Dừng và xóa hàng đợi của trình duyệt
             }
 
             const textCollection = document.getElementById('collection');
@@ -375,26 +388,20 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
             speakNextChunk();
 
         } else if (ttsState === 'playing') { 
-            console.log(`Trạng thái 'playing': Yêu cầu TẠM DỪNG đọc. Trước pause(): speaking=${speechSynthesis.speaking}, paused=${speechSynthesis.paused}`);
-            speechSynthesis.pause();
+            console.log(`Trạng thái 'playing': Yêu cầu TẠM DỪNG đọc. Trước cancel(): speaking=${speechSynthesis.speaking}, paused=${speechSynthesis.paused}`);
+            // Thay vì pause(), dùng cancel() để dừng hẳn utterance hiện tại.
+            // Trạng thái sẽ được quản lý để khi "Tiếp tục" sẽ đọc lại chunk hiện tại (hoặc chunk tiếp theo nếu onend đã kịp chạy)
+            speechSynthesis.cancel(); // Sẽ kích hoạt onerror với 'canceled' hoặc onend
             ttsState = 'paused'; 
-            console.log(`Sau pause(): speaking=${speechSynthesis.speaking}, paused=${speechSynthesis.paused}. ttsState giờ là 'paused'.`);
+            console.log(`Sau cancel() để tạm dừng: speaking=${speechSynthesis.speaking}, paused=${speechSynthesis.paused}. ttsState giờ là 'paused'.`);
+            // currentChunkIndex không thay đổi, để khi resume sẽ đọc lại từ đây (hoặc chunk tiếp theo nếu onend đã chạy)
         } else if (ttsState === 'paused') { 
-            console.log(`Trạng thái 'paused': Yêu cầu TIẾP TỤC đọc. currentChunkIndex=${currentChunkIndex}, totalChunks=${speechChunks.length}. Trước resume(): speaking=${speechSynthesis.speaking}, paused=${speechSynthesis.paused}`);
+            console.log(`Trạng thái 'paused': Yêu cầu TIẾP TỤC đọc. currentChunkIndex=${currentChunkIndex}, totalChunks=${speechChunks.length}.`);
             ttsState = 'playing'; 
-            
-            // Nếu speechSynthesis không còn ở trạng thái paused (ví dụ, utterance đã bị cancel ngầm)
-            // hoặc nếu không còn gì đang speaking, thì chúng ta cần bắt đầu lại chunk hiện tại.
-            if (!speechSynthesis.paused && !speechSynthesis.speaking && currentChunkIndex < speechChunks.length) {
-                console.warn("Trạng thái của speechSynthesis không phải là 'paused' khi cố gắng resume, hoặc không có gì đang nói. Sẽ thử đọc lại chunk hiện tại.");
-                speakNextChunk(); // Đọc lại chunk hiện tại
-            } else if (speechSynthesis.paused) { // Chỉ gọi resume nếu trình duyệt thực sự đang paused
-                speechSynthesis.resume();
-                console.log(`Sau resume(): speaking=${speechSynthesis.speaking}, paused=${speechSynthesis.paused}. ttsState giờ là 'playing'.`);
-            } else {
-                 console.log("Không gọi resume vì speechSynthesis không ở trạng thái paused. Có thể đã kết thúc hoặc bị hủy. Thử speakNextChunk.");
-                 speakNextChunk(); // Nếu không paused, có thể utterance đã kết thúc, thử chunk tiếp theo
-            }
+            // Không gọi resume(), thay vào đó gọi speakNextChunk để đọc lại chunk hiện tại (hoặc chunk tiếp theo nếu onend đã chạy khi pause)
+            // Điều này đảm bảo việc đọc tiếp tục một cách đáng tin cậy hơn.
+            console.log("Sẽ gọi speakNextChunk() để tiếp tục từ chunk hiện tại/tiếp theo.");
+            speakNextChunk(); 
         }
         updateSpeechControlButton(); 
     }
@@ -424,16 +431,12 @@ Tổng đốc Đông Châu như hắn rơi vào hoàn cảnh lúng túng.
             if(speechControlButton) speechControlButton.disabled = true;
         }
         
-        // updateSpeechControlButton(); // Gọi ở cuối populateVoiceList rồi
-
-        const savedUrls = localStorage.getItem(URLS_STORAGE_KEY);
-        if (savedUrls) { document.getElementById('urls').value = savedUrls; }
-        const urlsTextarea = document.getElementById('urls');
-        urlsTextarea.addEventListener('input', () => { 
-            localStorage.setItem(URLS_STORAGE_KEY, urlsTextarea.value); 
-        });
         const collectionTextarea = document.getElementById('collection');
         collectionTextarea.addEventListener('input', updateSpeechControlButton);
+        // Gọi updateSpeechControlButton một lần nữa sau khi mọi thứ đã được thiết lập
+        // để đảm bảo trạng thái nút đúng nếu collection có text sẵn.
+        updateSpeechControlButton();
+
 
     });
 
