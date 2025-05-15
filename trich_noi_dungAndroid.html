@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trích xuất nội dung truyện (TTS Một Nút - Sửa Pause/Resume)</title>
+    <title>Trích xuất nội dung truyện (TTS Một Nút - Hoàn chỉnh)</title>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
@@ -36,7 +36,7 @@
             padding-bottom: 5px;
             margin-top: 25px;
         }
-        div:not(#debugLogContainer) {
+        div { /* Áp dụng cho các div chính */
             background: white;
             padding: 20px;
             border-radius: 10px;
@@ -80,6 +80,7 @@
         button[onclick*="clearUrls"] { background-color: #f44336; }
         button[onclick="copyToClipboard()"] { background-color: #4CAF50; }
         
+        /* Nút điều khiển TTS duy nhất */
         button#speechControlButton { 
             background-color: #673AB7; /* Tím cho 'Đọc' */
             min-width: 120px; 
@@ -94,10 +95,6 @@
         #progress-bar-fill { width: 0%; height: 100%; background-color: #4CAF50; }
         #progress-text { text-align: center; margin-top: 5px; }
         
-        #debugLogContainer { margin-top: 20px; padding: 10px; background-color: #222; color: #0f0; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        #debugLog { height: 200px; overflow-y: scroll; border: 1px solid #444; background-color: #111; padding: 5px; font-family: 'Courier New', monospace; font-size: 0.8em; white-space: pre-wrap; color: #0f0; }
-        #debugLog .warn { color: #ff0; }
-        #debugLog .error { color: #f00; }
 
         @media (max-width: 768px) {
             body { padding: 10px; }
@@ -108,7 +105,7 @@
     </style>
 </head>
 <body>
-    <h1>Trích xuất nội dung truyện (TTS Một Nút - Sửa Pause/Resume)</h1>
+    <h1>Trích xuất nội dung truyện (TTS Một Nút - Hoàn chỉnh)</h1>
 
     <div>
         <h3>1. Nhập URLs (mỗi URL một dòng):</h3>
@@ -125,54 +122,16 @@
         <h3>2. Tổng hợp nội dung:</h3>
         <button onclick="copyToClipboard()">Copy vào Clipboard</button>
         <button onclick="handleSpeechControl()" id="speechControlButton">Đọc</button> 
-        <textarea id="collection" rows="20" cols="80" readonly>Nhìn từ trên cao, sân khấu Trống Đồng trên đường Cách Mạng Tháng Tám hoang vắng. Đầu tháng 5, đại diện Trống Đồng cho biết địa điểm này ngưng hoạt động từ Tết Nguyên đán Ất Tỵ vì thiếu ban điều hành.
-
-Trống Đồng, do công ty TNHH MTV Công viên cây xanh TP HCM - đơn vị quản lý, thành lập vào tháng 6/1989 với mô hình hoạt động nhỏ gọn, phục vụ số ít người yêu nhạc. Năm 1990, Sở Văn hóa Thông tin TP HCM (nay là Sở Văn hóa và Thể thao TP HCM) cấp giấy phép cho điểm diễn này hoạt động ca nhạc chuyên nghiệp.
-
-Những năm đầu, sân khấu thô sơ, chưa được trang bị micro không dây, không có mái che. Dù vậy, tụ điểm ca nhạc này là một phần ký ức, gắn chặt với đời sống văn hóa - giải trí của khán giả một thời, nâng đỡ nhiều tên tuổi như nghệ sĩ Ngọc Ánh, Quang Linh, Ngọc Sơn, Phương Thanh, Đan Trường, Hiền Thục, Thanh Thảo, Bảo Chung, Nhật Cường, Tấn Beo.
-Khu sân khấu chính xuống cấp, cơ sở vật chất không đáp ứng được việc tổ chức các show diễn.
-
-Nhiều người trong nghề và giới quản lý nhận định trong bối cảnh TP HCM có thêm nhiều điểm diễn mới, sôi động và cải tiến về kỹ thuật, Trống Đồng ngày càng thưa vắng khách vì cơ sở vật chất cũ kỹ. Điểm diễn cũng thiếu sự đầu tư, công năng không còn phù hợp để đáp ứng nhu cầu giải trí của số lượng khán giả lớn.</textarea>
+        <textarea id="collection" rows="20" cols="80" readonly></textarea>
         <p><small>Lưu ý: Để đọc được tiếng Việt, thiết bị Android của bạn cần cài đặt và chọn gói giọng nói tiếng Việt trong cài đặt Text-to-Speech.</small></p>
     </div>
 
-    <div id="debugLogContainer">
-        <h4>Log gỡ lỗi TTS (Trên trang chính):</h4>
-        <div id="debugLog"></div>
-    </div>
-
     <script>
-    // --- Phần ghi log ra div (giữ nguyên) ---
-    let logDivElement = null;
-    const originalConsoleLog = console.log; 
-    const originalConsoleWarn = console.warn;
-    const originalConsoleError = console.error;
-    function appendToLogDiv(type, args) {
-        if (logDivElement) {
-            const message = Array.from(args).map(arg => {
-                 if (arg instanceof ErrorEvent && arg.error === undefined) { return `ErrorEvent (error: undefined, message: ${arg.message || 'N/A'}, utterance: ${arg.utterance ? arg.utterance.text.substring(0,30) : 'N/A'})`; }
-                if (arg instanceof SpeechSynthesisEvent) {  return `SpeechSynthesisEvent (type: ${arg.type}, charIndex: ${arg.charIndex}, elapsedTime: ${arg.elapsedTime}, name: ${arg.name}, utterance: ${arg.utterance.text.substring(0,30)})`; }
-                if (arg instanceof Event) { return `Event (type: ${arg.type}, isTrusted: ${arg.isTrusted})`; }
-                if (arg instanceof Error) return arg.stack || arg.message;
-                if (typeof arg === 'object' && arg !== null) return JSON.stringify(arg, null, 2);
-                return String(arg);
-            }).join(' ');
-            const entry = document.createElement('div');
-            entry.className = type.toLowerCase();
-            entry.textContent = `[${type.toUpperCase()}] ${new Date().toLocaleTimeString()}: ${message}`;
-            logDivElement.appendChild(entry);
-            logDivElement.scrollTop = logDivElement.scrollHeight;
-        }
-    }
-    console.log = function(...args) { originalConsoleLog.apply(console, args); appendToLogDiv('LOG', args); };
-    console.warn = function(...args) { originalConsoleWarn.apply(console, args); appendToLogDiv('WARN', args); };
-    console.error = function(...args) { originalConsoleError.apply(console, args); appendToLogDiv('ERROR', args); };
-    // --- Kết thúc phần ghi log ra div ---
-
     const URLS_STORAGE_KEY = 'savedStoryUrls'; 
     const HISTORY_STORAGE_KEY = 'urlHistory';
     const MAX_HISTORY_SIZE = 50;
 
+    // --- Biến cho TTS ---
     let currentUtterance = null;
     let ttsVoices = []; 
     let ttsVoicesLoadedAtLeastOnce = false;
@@ -184,16 +143,19 @@ Nhiều người trong nghề và giới quản lý nhận định trong bối c
 
 
     function populateVoiceList() {
-        console.log("populateVoiceList được gọi.");
-        if (typeof speechSynthesis === 'undefined') { console.warn('speechSynthesis không được hỗ trợ.'); return; }
+        // console.log("populateVoiceList được gọi."); // Giữ lại để debug nếu cần
+        if (typeof speechSynthesis === 'undefined') { 
+            // console.warn('speechSynthesis không được hỗ trợ.'); 
+            return; 
+        }
         ttsVoices = speechSynthesis.getVoices();
         if (ttsVoices.length > 0) {
             ttsVoicesLoadedAtLeastOnce = true;
-            console.log("Danh sách giọng đọc đã được tải.");
+            // console.log("Danh sách giọng đọc đã được tải.");
         } else {
-            console.warn("Danh sách giọng đọc vẫn trống sau khi onvoiceschanged/populate.");
+            // console.warn("Danh sách giọng đọc vẫn trống sau khi onvoiceschanged/populate.");
         }
-        console.log("Số lượng giọng đọc:", ttsVoices.length, ". Đã tải ít nhất một lần:", ttsVoicesLoadedAtLeastOnce);
+        // console.log("Số lượng giọng đọc:", ttsVoices.length, ". Đã tải ít nhất một lần:", ttsVoicesLoadedAtLeastOnce);
         updateSpeechControlButton(); 
     }
 
@@ -217,26 +179,23 @@ Nhiều người trong nghề và giới quản lý nhận định trong bối c
         } else { // idle
             speechControlButton.textContent = 'Đọc';
             speechControlButton.disabled = !hasText || !ttsVoicesLoadedAtLeastOnce; 
-            if (!ttsVoicesLoadedAtLeastOnce) {
-                console.warn("Nút Đọc bị vô hiệu hóa vì TTS chưa sẵn sàng (giọng đọc chưa tải).");
-            } else if (!hasText) {
-                console.log("Nút Đọc bị vô hiệu hóa vì không có nội dung.");
-            }
+            // if (!ttsVoicesLoadedAtLeastOnce) {
+            //     console.warn("Nút Đọc bị vô hiệu hóa vì TTS chưa sẵn sàng (giọng đọc chưa tải).");
+            // } else if (!hasText) {
+            //     console.log("Nút Đọc bị vô hiệu hóa vì không có nội dung.");
+            // }
         }
-        console.log(`Nút điều khiển được cập nhật: Text='${speechControlButton.textContent}', Disabled=${speechControlButton.disabled}, State=${ttsState}`);
+        // console.log(`Nút điều khiển được cập nhật: Text='${speechControlButton.textContent}', Disabled=${speechControlButton.disabled}, State=${ttsState}`);
     }
 
     function speakNextChunk() {
-        console.log(`speakNextChunk: ttsState=${ttsState}, currentChunkIndex=${currentChunkIndex}, totalChunks=${speechChunks.length}`);
-        // Chỉ đọc nếu đang ở trạng thái 'playing' và còn chunk để đọc
+        // console.log(`speakNextChunk: ttsState=${ttsState}, currentChunkIndex=${currentChunkIndex}, totalChunks=${speechChunks.length}`);
         if (ttsState !== 'playing' || currentChunkIndex >= speechChunks.length) {
-            console.log("speakNextChunk: Không đọc. Lý do: ttsState không phải 'playing' hoặc đã hết chunk.");
+            // console.log("speakNextChunk: Không đọc. Lý do: ttsState không phải 'playing' hoặc đã hết chunk.");
             if (ttsState !== 'paused' && currentChunkIndex >= speechChunks.length) { 
-                 // Nếu đã đọc hết và không phải đang tạm dừng, thì chuyển về idle
-                 console.log("speakNextChunk: Đã đọc hết tất cả các chunk. Chuyển ttsState sang 'idle'.");
+                 // console.log("speakNextChunk: Đã đọc hết tất cả các chunk. Chuyển ttsState sang 'idle'.");
                  ttsState = 'idle';
             } else if (ttsState !== 'paused') {
-                // Nếu bị dừng từ bên ngoài (không phải pause)
                 ttsState = 'idle';
             }
             updateSpeechControlButton();
@@ -244,72 +203,65 @@ Nhiều người trong nghề và giới quản lý nhận định trong bối c
         }
 
         const chunkText = speechChunks[currentChunkIndex];
-        console.log(`Chuẩn bị đọc chunk ${currentChunkIndex + 1}/${speechChunks.length}: "${chunkText.substring(0, 50)}..."`);
+        // console.log(`Chuẩn bị đọc chunk ${currentChunkIndex + 1}/${speechChunks.length}: "${chunkText.substring(0, 50)}..."`);
 
         currentUtterance = new SpeechSynthesisUtterance(chunkText);
         currentUtterance.lang = 'vi-VN';
 
         currentUtterance.onstart = (event) => {
-            console.log(`Sự kiện onstart cho chunk ${currentChunkIndex + 1}. Hiện tại ttsState=${ttsState}`, event);
-            // Đảm bảo trạng thái là playing, đặc biệt quan trọng sau khi "Tiếp tục"
+            // console.log(`Sự kiện onstart cho chunk ${currentChunkIndex + 1}. Hiện tại ttsState=${ttsState}`, event);
             if (ttsState !== 'playing') {
-                console.warn("onstart được gọi nhưng ttsState không phải 'playing'. Cập nhật thành 'playing'.");
+                // console.warn("onstart được gọi nhưng ttsState không phải 'playing'. Cập nhật thành 'playing'.");
                 ttsState = 'playing';
             }
             updateSpeechControlButton(); 
         };
         
         currentUtterance.onpause = (event) => { 
-            console.log(`Sự kiện Utterance ONPAUSE cho chunk ${currentChunkIndex + 1}. speechState.paused=${speechSynthesis.paused}`, event);
+            // console.log(`Sự kiện Utterance ONPAUSE cho chunk ${currentChunkIndex + 1}. speechState.paused=${speechSynthesis.paused}`, event);
         };
         
         currentUtterance.onresume = (event) => { 
-            console.log(`Sự kiện Utterance ONRESUME cho chunk ${currentChunkIndex + 1}. speechState.paused=${speechSynthesis.paused}`, event);
+            // console.log(`Sự kiện Utterance ONRESUME cho chunk ${currentChunkIndex + 1}. speechState.paused=${speechSynthesis.paused}`, event);
         };
 
         currentUtterance.onend = (event) => {
-            console.log(`Sự kiện onend cho chunk ${currentChunkIndex + 1}. Hiện tại ttsState=${ttsState}, speechSynthesis.speaking=${speechSynthesis.speaking}, speechSynthesis.paused=${speechSynthesis.paused}`, event);
-            const previousUtteranceText = currentUtterance ? currentUtterance.text.substring(0,30) : "N/A"; 
+            // console.log(`Sự kiện onend cho chunk ${currentChunkIndex + 1}. Hiện tại ttsState=${ttsState}, speechSynthesis.speaking=${speechSynthesis.speaking}, speechSynthesis.paused=${speechSynthesis.paused}`, event);
             currentUtterance = null; 
 
             if (ttsState === 'playing') { 
-                console.log(`onend: ttsState is 'playing'. Incrementing chunk index from ${currentChunkIndex}. Utterance was: ${previousUtteranceText}`);
+                // console.log(`onend: ttsState is 'playing'. Incrementing chunk index from ${currentChunkIndex}.`);
                 currentChunkIndex++;
                 if (currentChunkIndex < speechChunks.length) {
-                    console.log(`onend: Calling speakNextChunk for new index ${currentChunkIndex}.`);
+                    // console.log(`onend: Calling speakNextChunk for new index ${currentChunkIndex}.`);
                     speakNextChunk(); 
                 } else {
-                    console.log("Đã đọc hết tất cả các chunk. Chuyển ttsState sang 'idle'.");
+                    // console.log("Đã đọc hết tất cả các chunk. Chuyển ttsState sang 'idle'.");
                     ttsState = 'idle';
                     updateSpeechControlButton();
                 }
             } else if (ttsState === 'paused') {
-                 console.log("onend được gọi nhưng ttsState là 'paused'. Chunk này có thể đã kết thúc trong khi tạm dừng. Sẽ tăng currentChunkIndex.");
+                 // console.log("onend được gọi nhưng ttsState là 'paused'. Chunk này có thể đã kết thúc trong khi tạm dừng. Sẽ tăng currentChunkIndex.");
                  currentChunkIndex++; 
                  if (currentChunkIndex >= speechChunks.length) {
-                     console.log("Đã ở cuối danh sách chunk trong khi paused và onend được gọi. Chuyển về idle.");
+                     // console.log("Đã ở cuối danh sách chunk trong khi paused và onend được gọi. Chuyển về idle.");
                      ttsState = 'idle';
                  }
-                 updateSpeechControlButton(); // Nút vẫn là "Tiếp tục"
+                 updateSpeechControlButton(); 
             } else { 
-                console.log(`onend được gọi nhưng ttsState là '${ttsState}'. Không đọc chunk tiếp theo.`);
+                // console.log(`onend được gọi nhưng ttsState là '${ttsState}'. Không đọc chunk tiếp theo.`);
                 updateSpeechControlButton(); 
             }
         };
 
         currentUtterance.onerror = (event) => {
-            console.error(`Sự kiện onerror TTS cho chunk ${currentChunkIndex + 1}:`, event.error, event);
-            // Chỉ hiển thị lỗi nếu không phải do người dùng chủ động cancel/interrupt
-            // khi ttsState đã được chuyển sang 'idle' bởi handleSpeechControl (khi bắt đầu đọc mới)
-            // hoặc khi ttsState là 'paused' (do cancel để tạm dừng)
+            console.error(`Sự kiện onerror TTS cho chunk ${currentChunkIndex + 1}:`, event.error, event); // Giữ lại log lỗi này
             if (ttsState !== 'idle' && ttsState !== 'paused' && !(event.error === 'canceled' || event.error === 'interrupted')) {
                 let displayError = event.error ? event.error : "Lỗi không xác định";
                 Swal.fire('Lỗi đọc TTS', `Đã xảy ra lỗi khi đọc chunk ${currentChunkIndex + 1}: ${displayError}.`, 'error');
             } else {
-                console.warn(`Lỗi onerror (${event.error}) được bỏ qua do ttsState là '${ttsState}' hoặc lỗi là 'canceled'/'interrupted'.`);
+                // console.warn(`Lỗi onerror (${event.error}) được bỏ qua do ttsState là '${ttsState}' hoặc lỗi là 'canceled'/'interrupted'.`);
             }
-            // Nếu lỗi không phải do cancel khi đang playing (mà là lỗi thực sự), thì reset về idle.
-            // Nếu lỗi là 'canceled' và ttsState là 'paused', thì giữ nguyên 'paused'.
             if (!( (event.error === 'canceled' || event.error === 'interrupted') && ttsState === 'paused') ) {
                 ttsState = 'idle'; 
             }
@@ -319,7 +271,7 @@ Nhiều người trong nghề và giới quản lý nhận định trong bối c
         
         try {
             speechSynthesis.speak(currentUtterance);
-            console.log(`Đã gọi speechSynthesis.speak() cho chunk ${currentChunkIndex + 1}.`);
+            // console.log(`Đã gọi speechSynthesis.speak() cho chunk ${currentChunkIndex + 1}.`);
         } catch (e) {
             console.error(`Lỗi trực tiếp khi gọi speechSynthesis.speak() cho chunk ${currentChunkIndex + 1}:`, e);
             Swal.fire('Lỗi nghiêm trọng TTS', `Lỗi khi gọi hàm speak: ${e.message}`, 'error');
@@ -329,7 +281,7 @@ Nhiều người trong nghề và giới quản lý nhận định trong bối c
     }
 
     function handleSpeechControl() {
-        console.log(`handleSpeechControl được gọi. Trạng thái hiện tại: ${ttsState}`);
+        // console.log(`handleSpeechControl được gọi. Trạng thái hiện tại: ${ttsState}`);
         if (!speechControlButton) speechControlButton = document.getElementById('speechControlButton');
 
         if (typeof speechSynthesis === 'undefined') {
@@ -338,7 +290,7 @@ Nhiều người trong nghề và giới quản lý nhận định trong bối c
         }
 
         if (!ttsVoicesLoadedAtLeastOnce && ttsVoices.length === 0) {
-            console.warn("Giọng đọc chưa tải, thử populate lại.");
+            // console.warn("Giọng đọc chưa tải, thử populate lại.");
             populateVoiceList(); 
             setTimeout(() => {
                 if (!ttsVoicesLoadedAtLeastOnce && ttsVoices.length === 0) {
@@ -347,7 +299,7 @@ Nhiều người trong nghề và giới quản lý nhận định trong bối c
                     return;
                 }
                 if (ttsState === 'idle' && document.getElementById('speechControlButton').textContent === 'Đọc') { 
-                    console.log("Thử gọi lại handleSpeechControl sau khi populateVoiceList (nếu vẫn idle và nút là 'Đọc').");
+                    // console.log("Thử gọi lại handleSpeechControl sau khi populateVoiceList (nếu vẫn idle và nút là 'Đọc').");
                     handleSpeechControl();
                 }
             }, 500); 
@@ -355,10 +307,10 @@ Nhiều người trong nghề và giới quản lý nhận định trong bối c
         }
         
         if (ttsState === 'idle') { 
-            console.log("Trạng thái 'idle': Bắt đầu đọc mới / Đọc lại từ đầu.");
+            // console.log("Trạng thái 'idle': Bắt đầu đọc mới / Đọc lại từ đầu.");
             if(speechSynthesis.speaking || speechSynthesis.pending || speechSynthesis.paused) { 
-                console.log(`Hủy bỏ việc đọc/chờ đọc/đang tạm dừng cũ. Speaking: ${speechSynthesis.speaking}, Pending: ${speechSynthesis.pending}, Paused: ${speechSynthesis.paused}`);
-                speechSynthesis.cancel(); // Dừng và xóa hàng đợi của trình duyệt
+                // console.log(`Hủy bỏ việc đọc/chờ đọc/đang tạm dừng cũ. Speaking: ${speechSynthesis.speaking}, Pending: ${speechSynthesis.pending}, Paused: ${speechSynthesis.paused}`);
+                speechSynthesis.cancel(); 
             }
 
             const textCollection = document.getElementById('collection');
@@ -379,25 +331,20 @@ Nhiều người trong nghề và giới quản lý nhận định trong bối c
                  return;
             }
             
-            console.log(`Đã chia văn bản thành ${speechChunks.length} chunk(s).`);
+            // console.log(`Đã chia văn bản thành ${speechChunks.length} chunk(s).`);
             currentChunkIndex = 0;
             ttsState = 'playing'; 
             speakNextChunk();
 
         } else if (ttsState === 'playing') { 
-            console.log(`Trạng thái 'playing': Yêu cầu TẠM DỪNG đọc. Trước cancel(): speaking=${speechSynthesis.speaking}, paused=${speechSynthesis.paused}`);
-            // Thay vì pause(), dùng cancel() để dừng hẳn utterance hiện tại.
-            // Trạng thái sẽ được quản lý để khi "Tiếp tục" sẽ đọc lại chunk hiện tại (hoặc chunk tiếp theo nếu onend đã kịp chạy)
-            speechSynthesis.cancel(); // Sẽ kích hoạt onerror với 'canceled' hoặc onend
+            // console.log(`Trạng thái 'playing': Yêu cầu TẠM DỪNG đọc. Trước cancel(): speaking=${speechSynthesis.speaking}, paused=${speechSynthesis.paused}`);
+            speechSynthesis.cancel(); 
             ttsState = 'paused'; 
-            console.log(`Sau cancel() để tạm dừng: speaking=${speechSynthesis.speaking}, paused=${speechSynthesis.paused}. ttsState giờ là 'paused'.`);
-            // currentChunkIndex không thay đổi, để khi resume sẽ đọc lại từ đây (hoặc chunk tiếp theo nếu onend đã chạy)
+            // console.log(`Sau cancel() để tạm dừng: speaking=${speechSynthesis.speaking}, paused=${speechSynthesis.paused}. ttsState giờ là 'paused'.`);
         } else if (ttsState === 'paused') { 
-            console.log(`Trạng thái 'paused': Yêu cầu TIẾP TỤC đọc. currentChunkIndex=${currentChunkIndex}, totalChunks=${speechChunks.length}.`);
+            // console.log(`Trạng thái 'paused': Yêu cầu TIẾP TỤC đọc. currentChunkIndex=${currentChunkIndex}, totalChunks=${speechChunks.length}.`);
             ttsState = 'playing'; 
-            // Không gọi resume(), thay vào đó gọi speakNextChunk để đọc lại chunk hiện tại (hoặc chunk tiếp theo nếu onend đã chạy khi pause)
-            // Điều này đảm bảo việc đọc tiếp tục một cách đáng tin cậy hơn.
-            console.log("Sẽ gọi speakNextChunk() để tiếp tục từ chunk hiện tại/tiếp theo.");
+            // console.log("Sẽ gọi speakNextChunk() để tiếp tục từ chunk hiện tại/tiếp theo.");
             speakNextChunk(); 
         }
         updateSpeechControlButton(); 
@@ -405,39 +352,36 @@ Nhiều người trong nghề và giới quản lý nhận định trong bối c
 
 
     document.addEventListener('DOMContentLoaded', () => {
-        logDivElement = document.getElementById('debugLog');
-        console.log("Sự kiện DOMContentLoaded. Trang đã tải.");
+        // console.log("Sự kiện DOMContentLoaded. Trang đã tải.");
 
         speechControlButton = document.getElementById('speechControlButton'); 
 
         if (typeof speechSynthesis !== 'undefined') {
-            console.log("Trình duyệt có hỗ trợ speechSynthesis.");
+            // console.log("Trình duyệt có hỗ trợ speechSynthesis.");
             if (speechSynthesis.getVoices().length === 0) {
-                console.log("Danh sách giọng đọc ban đầu trống, chờ onvoiceschanged.");
+                // console.log("Danh sách giọng đọc ban đầu trống, chờ onvoiceschanged.");
                 speechSynthesis.onvoiceschanged = () => {
-                    console.log("Sự kiện onvoiceschanged được kích hoạt (sau khi chờ).");
+                    // console.log("Sự kiện onvoiceschanged được kích hoạt (sau khi chờ).");
                     populateVoiceList();
                     speechSynthesis.onvoiceschanged = null; 
                 };
             } else {
-                console.log("Giọng đọc đã có sẵn khi DOMContentLoaded.");
+                // console.log("Giọng đọc đã có sẵn khi DOMContentLoaded.");
                 populateVoiceList();
             }
         } else {
-            console.warn('Text-to-Speech không được hỗ trợ. Vô hiệu hóa nút TTS.');
+            // console.warn('Text-to-Speech không được hỗ trợ. Vô hiệu hóa nút TTS.');
             if(speechControlButton) speechControlButton.disabled = true;
         }
         
         const collectionTextarea = document.getElementById('collection');
         collectionTextarea.addEventListener('input', updateSpeechControlButton);
-        // Gọi updateSpeechControlButton một lần nữa sau khi mọi thứ đã được thiết lập
-        // để đảm bảo trạng thái nút đúng nếu collection có text sẵn.
         updateSpeechControlButton();
 
 
     });
 
-    // --- Các hàm cũ của trang (Dán vào đây) ---
+    // --- Các hàm cũ của trang (giữ nguyên) ---
     function getHistory() {
         const historyJson = localStorage.getItem(HISTORY_STORAGE_KEY);
         return historyJson ? JSON.parse(historyJson) : [];
