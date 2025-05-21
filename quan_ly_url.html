@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý URL Linh hoạt (Obfuscated V3 - Multi-add)</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 700px;
+            margin: auto;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="file"], textarea {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: sans-serif; /* Kế thừa font cho textarea */
+        }
+        textarea {
+            min-height: 80px; /* Chiều cao tối thiểu cho textarea */
+            resize: vertical; /* Cho phép thay đổi kích thước theo chiều dọc */
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button.secondary {
+            background-color: #6c757d;
+        }
+        button.secondary:hover {
+            background-color: #545b62;
+        }
+        #urlListContainer {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            max-height: 300px; /* Giới hạn chiều cao và thêm cuộn */
+            overflow-y: auto; /* Thêm thanh cuộn dọc khi cần */
+        }
+        #urlListContainer a {
+            display: block;
+            padding: 8px;
+            text-decoration: none;
+            color: #0056b3;
+            word-break: break-all;
+        }
+        #urlListContainer a:hover {
+            background-color: #dde6ed;
+            text-decoration: underline;
+        }
+        .url-item:not(:last-child) {
+            border-bottom: 1px solid #ccc;
+        }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        .section {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .section:last-child {
+            border-bottom: none;
+        }
+        .info-text {
+            font-size: 0.9em;
+            color: #555;
+            margin-bottom:10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Quản lý URL Linh hoạt</h1>
+        <p class="info-text"><strong>Quan trọng:</strong> Tệp <code>urls.txt</code> trên máy của bạn sẽ chứa các đường dẫn được xáo trộn ký tự. Khi tải lên, chương trình sẽ giải mã chúng để hiển thị và làm việc. Khi lưu, các đường dẫn sẽ được xáo trộn lại trước khi tải về.</p>
+
+        <div class="section">
+            <h2>1. Tải danh sách đường dẫn (paths)</h2>
+            <label for="fileInput">Chọn tệp urls.txt (đường dẫn đã được xáo trộn):</label>
+            <input type="file" id="fileInput" accept=".txt">
+            <p id="fileStatus"></p>
+        </div>
+
+        <div class="section">
+            <h2>2. Nhập tên miền mới</h2>
+            <label for="newDomain">Tên miền mới (ví dụ: fdgh.net hoặc https://fdgh.net):</label>
+            <input type="text" id="newDomain" placeholder="https://example.com">
+            <button id="generateUrlsButton">Tạo và Hiển thị URLs</button>
+        </div>
+
+        <div class="section">
+            <h2>3. Thêm đường dẫn mới từ URL đầy đủ</h2>
+            <label for="newFullUrlsInput">Dán một hoặc nhiều URL đầy đủ (mỗi URL một dòng):</label>
+            <textarea id="newFullUrlsInput" rows="5" placeholder="https://new-example.com/new/page1.html&#10;https://another.org/resource/item.php?id=123&#10;domain.com/just/path.aspx"></textarea>
+            <button id="addPathButton">Thêm đường dẫn</button>
+        </div>
+        
+        <div id="statusMessage" class="status" style="display:none;"></div>
+
+        <h2>Danh sách URL đã tạo (dạng gốc, đã giải mã):</h2>
+        <div id="urlListContainer">
+            <p>Chưa có URL nào được tạo.</p>
+        </div>
+
+        <div class="section">
+            <h2>4. Lưu danh sách đường dẫn hiện tại</h2>
+            <button id="saveListButton" class="secondary">Lưu danh sách vào tệp urls.txt (sẽ được xáo trộn)</button>
+            <p class="info-text"><small>Thao tác này sẽ cho phép bạn tải xuống một tệp <code>urls.txt</code> chứa tất cả các đường dẫn hiện có (đã được xáo trộn ký tự). Bạn cần lưu tệp này và thay thế tệp cũ nếu muốn.</small></p>
+        </div>
+
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const newDomainInput = document.getElementById('newDomain');
+        const generateUrlsButton = document.getElementById('generateUrlsButton');
+        const urlListContainer = document.getElementById('urlListContainer');
+        const fileStatus = document.getElementById('fileStatus');
+        
+        const newFullUrlsInput = document.getElementById('newFullUrlsInput'); // ID mới cho textarea
+        const addPathButton = document.getElementById('addPathButton');
+        const saveListButton = document.getElementById('saveListButton');
+        const statusMessage = document.getElementById('statusMessage');
+
+        let currentPaths = []; // Mảng lưu trữ các đường dẫn (paths) ở dạng GỐC, đã giải mã.
+
+        const SUBSTITUTION_MAP = {
+            'a': 'm', 'm': 'a', 'b': 'n', 'n': 'b', 'c': 'o', 'o': 'c',
+            'd': 'p', 'p': 'd', 'e': 'q', 'q': 'e', 'f': 'r', 'r': 'f',
+            'g': 's', 's': 'g', 'h': 't', 't': 'h', 'i': 'u', 'u': 'i',
+            'j': 'v', 'v': 'j', 'k': 'w', 'w': 'k', 'l': 'x', 'x': 'l',
+            'y': 'z', 'z': 'y',
+            '0': '5', '5': '0', '1': '6', '6': '1', '2': '7', '7': '2',
+            '3': '8', '8': '3', '4': '9', '9': '4',
+            // '-': '~', '~': '-', // Ví dụ, có thể gây vấn đề nếu ký tự thay thế cũng là ký tự đặc biệt của URL
+            // '_': '@', '@': '_',
+        };
+
+        function transformText(text) {
+            if (typeof text !== 'string') return "";
+            let result = "";
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                result += SUBSTITUTION_MAP[char] || char;
+            }
+            return result;
+        }
+
+        fileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    const rawPaths = content.split(/\r?\n/).map(path => path.trim()).filter(path => path.length > 0);
+                    currentPaths = rawPaths.map(rawPath => transformText(rawPath)); 
+                    
+                    fileStatus.textContent = `Đã tải và GIẢI MÃ ${currentPaths.length} đường dẫn từ ${file.name}.`;
+                    showStatus(`Đã tải và GIẢI MÃ ${currentPaths.length} đường dẫn. Các đường dẫn này giờ ở dạng gốc.`, 'success');
+                    if (newDomainInput.value.trim()) {
+                        displayGeneratedUrls();
+                    } else {
+                         urlListContainer.innerHTML = '<p>Nhập tên miền và nhấn "Tạo và Hiển thị URLs" để xem kết quả.</p>';
+                    }
+                };
+                reader.onerror = function() {
+                    fileStatus.textContent = "Lỗi khi đọc tệp.";
+                    showStatus("Lỗi khi đọc tệp.", 'error');
+                }
+                reader.readAsText(file);
+            } else {
+                fileStatus.textContent = "Chưa chọn tệp nào.";
+            }
+        });
+
+        function getPathFromUrl(fullUrl) {
+            if (!fullUrl || typeof fullUrl !== 'string' || fullUrl.trim() === '') {
+                // Không hiển thị lỗi cho mỗi dòng trống, chỉ trả về null
+                return null;
+            }
+            let processedUrl = fullUrl.trim();
+            try {
+                if (!processedUrl.startsWith('http://') && !processedUrl.startsWith('https://')) {
+                    if (processedUrl.startsWith('/')) {
+                        if (isValidPath(processedUrl)) return processedUrl;
+                        else {
+                            console.warn("Định dạng đường dẫn không hợp lệ khi bắt đầu bằng /:", processedUrl);
+                            return null;
+                        }
+                    }
+                    processedUrl = 'http://' + processedUrl;
+                }
+                const urlObject = new URL(processedUrl);
+                let path = urlObject.pathname;
+                if (!path.startsWith('/')) {
+                    path = '/' + path;
+                }
+                path += urlObject.search + urlObject.hash;
+                if (path === "" && urlObject.pathname === "") { // Xử lý trường hợp domain không có path
+                    return "/";
+                }
+                return path;
+
+            } catch (e) {
+                console.warn("URL không hợp lệ hoặc không thể trích xuất:", fullUrl, e);
+                // Fallback đơn giản nếu new URL() thất bại
+                const protocolSeparator = processedUrl.indexOf('://');
+                let domainEndIndex = -1;
+                if (protocolSeparator !== -1) { // http://domain.com/path
+                    domainEndIndex = processedUrl.indexOf('/', protocolSeparator + 3);
+                } else { // domain.com/path
+                    domainEndIndex = processedUrl.indexOf('/');
+                }
+
+                if (domainEndIndex !== -1) {
+                    let extractedPath = processedUrl.substring(domainEndIndex);
+                     if (!extractedPath.startsWith('/')) extractedPath = '/' + extractedPath;
+                    if (isValidPath(extractedPath)) return extractedPath;
+                }
+                return null; // Trả về null nếu không trích xuất được
+            }
+        }
+        
+        function isValidPath(path) {
+            // Một path hợp lệ thường bắt đầu bằng /
+            // Có thể thêm các kiểm tra khác nếu cần (ví dụ: không chứa các ký tự không mong muốn)
+            return path && typeof path === 'string' && path.startsWith('/') && !path.includes(' ');
+        }
+
+        addPathButton.addEventListener('click', function() {
+            const fullUrlsText = newFullUrlsInput.value.trim();
+            if (!fullUrlsText) {
+                showStatus("Vui lòng nhập một hoặc nhiều URL đầy đủ, mỗi URL trên một dòng.", "error");
+                return;
+            }
+
+            const urlLines = fullUrlsText.split(/\r?\n/); // Tách theo dòng
+            let addedCount = 0;
+            let duplicateCount = 0;
+            let invalidCount = 0;
+            const successfullyAddedPaths = [];
+
+            urlLines.forEach(line => {
+                const fullUrl = line.trim();
+                if (fullUrl === "") {
+                    return; // Bỏ qua dòng trống
+                }
+
+                const newPath = getPathFromUrl(fullUrl); // newPath là dạng GỐC
+
+                if (newPath) {
+                    if (!currentPaths.includes(newPath)) {
+                        currentPaths.push(newPath); // Lưu path GỐC
+                        successfullyAddedPaths.push(newPath);
+                        addedCount++;
+                    } else {
+                        duplicateCount++;
+                    }
+                } else {
+                    invalidCount++;
+                }
+            });
+
+            let message = "";
+            let messageType = "info";
+
+            if (addedCount > 0) {
+                message += `Đã thêm ${addedCount} đường dẫn mới. `;
+                messageType = "success";
+            }
+            if (duplicateCount > 0) {
+                message += `${duplicateCount} đường dẫn bị trùng lặp (bỏ qua). `;
+                if (messageType === "info") messageType = "warning";
+            }
+            if (invalidCount > 0) {
+                message += `${invalidCount} URL không hợp lệ hoặc không thể trích xuất. `;
+                if (messageType === "info") messageType = "warning";
+            }
+            
+            if (message === "") { // Không có gì xảy ra (ví dụ: chỉ nhập dòng trống)
+                message = "Không có đường dẫn hợp lệ nào được xử lý từ đầu vào.";
+                messageType = "warning";
+            }
+
+            showStatus(message.trim(), messageType);
+
+            if (addedCount > 0) {
+                newFullUrlsInput.value = ''; // Xóa textarea nếu có thêm mới thành công
+                if (newDomainInput.value.trim()) {
+                    displayGeneratedUrls(); 
+                } else {
+                    urlListContainer.innerHTML = `<p>Đã thêm ${addedCount} đường dẫn mới. Nhập tên miền và nhấn "Tạo và Hiển thị URLs" để xem kết quả.</p>`;
+                }
+            }
+        });
+
+        generateUrlsButton.addEventListener('click', displayGeneratedUrls);
+        newDomainInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                displayGeneratedUrls();
+            }
+        });
+
+        function displayGeneratedUrls() {
+            let domain = newDomainInput.value.trim();
+            if (!domain) {
+                showStatus("Vui lòng nhập tên miền mới.", "error");
+                urlListContainer.innerHTML = "<p>Vui lòng nhập tên miền.</p>";
+                return;
+            }
+
+            if (!domain.startsWith('http://') && !domain.startsWith('https://')) {
+                domain = 'http://' + domain;
+            }
+            if (domain.endsWith('/')) {
+                domain = domain.slice(0, -1);
+            }
+
+            if (currentPaths.length === 0) {
+                urlListContainer.innerHTML = "<p>Không có đường dẫn nào để tạo URL. Hãy tải tệp urls.txt hoặc thêm đường dẫn mới.</p>";
+                 showStatus("Không có đường dẫn nào trong danh sách.", "error");
+                return;
+            }
+
+            urlListContainer.innerHTML = ''; 
+            let urlsGeneratedCount = 0;
+            currentPaths.forEach(path => { 
+                let currentCleanPath = path.trim();
+                if (!currentCleanPath.startsWith('/')) {
+                    currentCleanPath = '/' + currentCleanPath;
+                }
+
+                const fullUrl = domain + currentCleanPath;
+                const link = document.createElement('a');
+                link.href = fullUrl;
+                link.textContent = fullUrl; 
+                link.target = '_blank'; 
+                link.classList.add('url-item');
+                urlListContainer.appendChild(link);
+                urlsGeneratedCount++;
+            });
+            if(urlsGeneratedCount > 0) {
+                showStatus(`Đã tạo ${urlsGeneratedCount} URL (sử dụng đường dẫn GỐC).`, 'success');
+            } else {
+                urlListContainer.innerHTML = "<p>Không tạo được URL nào. Kiểm tra lại đường dẫn.</p>";
+            }
+        }
+
+        saveListButton.addEventListener('click', function() {
+            if (currentPaths.length === 0) {
+                showStatus("Không có đường dẫn nào để lưu.", "error");
+                return;
+            }
+            const pathsToSave = currentPaths.map(path => transformText(path));
+            const contentToSave = pathsToSave.join('\n');
+            const blob = new Blob([contentToSave], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'urls.txt';
+            document.body.appendChild(a); 
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url); 
+            showStatus("Đã tạo tệp urls.txt (đường dẫn ĐÃ XÁO TRỘN) để tải xuống.", 'success');
+        });
+
+        function showStatus(message, type = 'info') { 
+            statusMessage.textContent = message;
+            statusMessage.className = `status ${type}`; 
+            statusMessage.style.display = 'block';
+            
+            // Tự động ẩn sau một khoảng thời gian, trừ khi có thông báo mới ghi đè
+             setTimeout(() => {
+                if (statusMessage.textContent === message) { 
+                    statusMessage.style.display = 'none';
+                }
+            }, type === 'error' || type === 'warning' ? 10000 : 7000); // Lỗi/cảnh báo hiển thị lâu hơn
+        }
+    </script>
+</body>
+</html>
