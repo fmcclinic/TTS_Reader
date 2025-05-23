@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công cụ cắt ảnh Lá Số Tử Vi (v6.1 - Outer Lines Expand)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 750px; 
+        }
+        h1 { color: #1c1e21; text-align: center; margin-bottom: 25px; }
+        .controls { margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px;}
+        .controls label { font-weight: 600; }
+        .controls input[type="file"], .controls input[type="number"] {
+            padding: 8px; border: 1px solid #ddd; border-radius: 4px; max-width: 200px;
+        }
+         .button-controls { display: flex; gap: 10px; margin-top: 10px; justify-content: center;}
+
+
+        #imageDisplayArea {
+            position: relative; 
+            width: 660px; /* Fixed size for consistent layout */
+            height: 660px;
+            margin: 20px auto; 
+            padding: 30px; /* Space for outer lines to be dragged "outside" the image */
+            border: 2px dashed #007bff; 
+            box-sizing: border-box; 
+            overflow: hidden; /* Clip outer lines if dragged too far */
+            background-color: #e9ecef; 
+        }
+
+        #uploadedImage {
+            position: absolute; 
+            display: none; 
+            user-select: none;
+            -webkit-user-drag: none;
+            border: 1px solid #ccc;   
+            z-index: 1; 
+        }
+        
+        .dimming-overlay {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.5); 
+            z-index: 2;
+            display: none; 
+        }
+
+        #innerLinesHost { 
+            position: absolute;
+            border: 2px solid #fd7e14; /* Orange border for active crop area */
+            box-sizing: border-box;
+            display: none; 
+            overflow: hidden; 
+            z-index: 5; 
+        }
+
+        .line { /* Inner 3x3 grid lines */
+            position: absolute;
+            background-color: rgba(220, 53, 69, 0.7); /* Darker red */
+            user-select: none;
+            box-sizing: border-box;
+            z-index: 10; /* Above innerLinesHost's border/content */
+        }
+        .line.horizontal { width: 100%; height: 3px; cursor: ns-resize; left: 0; }
+        .line.vertical { width: 3px; height: 100%; cursor: ew-resize; top: 0; }
+
+        .outer-line { /* Outer boundary lines */
+            position: absolute;
+            background-color: rgba(23, 162, 184, 0.6); /* Cyan color */
+            user-select: none;
+            box-sizing: border-box;
+            z-index: 20;  /* Above other elements for dragging */
+            display: none; 
+        }
+        .outer-line.horizontal { height: 7px; cursor: ns-resize; }
+        .outer-line.vertical { width: 7px; cursor: ew-resize; }
+        
+        #cropButton, #resetLinesButton { 
+            padding: 10px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 6px;
+            color: white; transition: background-color 0.2s;
+        }
+        #cropButton { background-color: #1877f2; }
+        #resetLinesButton { background-color: #6c757d; }
+        #cropButton:hover { background-color: #166fe5; }
+        #resetLinesButton:hover { background-color: #5a6268; }
+        #cropButton:disabled, #resetLinesButton:disabled { 
+            background-color: #e4e6eb; color: #bcc0c4; cursor: not-allowed; 
+        }
+        .status-message { text-align: center; margin-top: 15px; color: #606770; min-height: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Công cụ cắt ảnh Lá Số Tử Vi (v6.1 - Outer Lines Expand)</h1>
+        <div class="controls">
+            <label for="imageUpload">Chọn ảnh lá số (PNG, JPG):</label>
+            <input type="file" id="imageUpload" accept="image/png, image/jpeg">
+            <div>
+                <label for="paddingInput">Padding Ảnh Con (px):</label>
+                <input type="number" id="paddingInput" value="5" min="0" max="30">
+            </div>
+        </div>
+        <div id="imageDisplayArea">
+            <img id="uploadedImage" src="#" alt="Ảnh lá số">
+            
+            <div class="dimming-overlay" id="dimTop"></div>
+            <div class="dimming-overlay" id="dimLeft"></div>
+            <div class="dimming-overlay" id="dimRight"></div>
+            <div class="dimming-overlay" id="dimBottom"></div>
+
+            <div id="innerLinesHost">
+                <div class="line horizontal" id="hLine1"></div>
+                <div class="line horizontal" id="hLine2"></div>
+                <div class="line horizontal" id="hLine3"></div>
+                <div class="line vertical" id="vLine1"></div>
+                <div class="line vertical" id="vLine2"></div>
+                <div class="line vertical" id="vLine3"></div>
+            </div>
+
+            <div class="outer-line horizontal" id="outerLineTop"></div>
+            <div class="outer-line horizontal" id="outerLineBottom"></div>
+            <div class="outer-line vertical" id="outerLineLeft"></div>
+            <div class="outer-line vertical" id="outerLineRight"></div>
+        </div>
+        <div class="button-controls">
+            <button id="resetLinesButton" disabled>Reset Lưới</button>
+            <button id="cropButton" disabled>Cắt và Tải ảnh</button>
+        </div>
+        <p id="statusMessage" class="status-message">Vui lòng chọn ảnh để bắt đầu.</p>
+        </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM fully loaded (v6.1)");
+            const imageUpload = document.getElementById('imageUpload');
+            const imageDisplayArea = document.getElementById('imageDisplayArea');
+            const uploadedImage = document.getElementById('uploadedImage');
+            const innerLinesHost = document.getElementById('innerLinesHost');
+            const cropButton = document.getElementById('cropButton');
+            const resetLinesButton = document.getElementById('resetLinesButton');
+            const statusMessage = document.getElementById('statusMessage');
+            const paddingInput = document.getElementById('paddingInput');
+
+            const hLines = [document.getElementById('hLine1'), document.getElementById('hLine2'), document.getElementById('hLine3')];
+            const vLines = [document.getElementById('vLine1'), document.getElementById('vLine2'), document.getElementById('vLine3')];
+            
+            const outerLineTop = document.getElementById('outerLineTop');
+            const outerLineBottom = document.getElementById('outerLineBottom');
+            const outerLineLeft = document.getElementById('outerLineLeft');
+            const outerLineRight = document.getElementById('outerLineRight');
+
+            const dimTop = document.getElementById('dimTop');
+            const dimLeft = document.getElementById('dimLeft');
+            const dimRight = document.getElementById('dimRight');
+            const dimBottom = document.getElementById('dimBottom');
+            const allDimmingOverlays = [dimTop, dimLeft, dimRight, dimBottom];
+
+            const allInnerLines = [...hLines, ...vLines];
+            const allOuterLines = [outerLineTop, outerLineBottom, outerLineLeft, outerLineRight];
+
+            let originalImageWidth = 0;
+            let originalImageHeight = 0;
+            let PADDING_PIXELS_CROP = parseInt(paddingInput.value) || 20; 
+            const INITIAL_OUTER_EXPANSION = 5; // Mở rộng ban đầu cho outerLines
+            let displayedImage = { x: 0, y: 0, width: 0, height: 0 }; 
+
+            paddingInput.addEventListener('change', () => {
+                PADDING_PIXELS_CROP = parseInt(paddingInput.value) || 0;
+                if (PADDING_PIXELS_CROP < 0) PADDING_PIXELS_CROP = 0;
+                if (PADDING_PIXELS_CROP > 50) PADDING_PIXELS_CROP = 50;
+                paddingInput.value = PADDING_PIXELS_CROP;
+            });
+            
+            let downloadQueue = []; 
+            let currentDownloadIndex = 0;
+            let successfulDownloadsCount = 0;
+            const DOWNLOAD_DELAY_MS = 300;
+
+            imageUpload.addEventListener('change', (event) => { 
+                const file = event.target.files[0];
+                if (file) {
+                    statusMessage.textContent = "Đang đọc file ảnh...";
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        uploadedImage.src = e.target.result; 
+                        uploadedImage.style.display = 'block'; 
+                        uploadedImage.onerror = () => { statusMessage.textContent = "Lỗi: Không thể hiển thị ảnh."; cropButton.disabled = true; resetLinesButton.disabled = true;};
+                        uploadedImage.onload = () => { 
+                            originalImageWidth = uploadedImage.naturalWidth;
+                            originalImageHeight = uploadedImage.naturalHeight;
+                            if (originalImageWidth === 0 || originalImageHeight === 0) { statusMessage.textContent = "Lỗi: Ảnh kích thước không hợp lệ."; cropButton.disabled = true; resetLinesButton.disabled = true; return; }
+                            try {
+                                const displayAreaStyle = getComputedStyle(imageDisplayArea);
+                                const displayAreaPadding = parseFloat(displayAreaStyle.paddingTop); 
+                                const displayAreaContentActualWidth = imageDisplayArea.clientWidth - 2 * displayAreaPadding;
+                                const displayAreaContentActualHeight = imageDisplayArea.clientHeight - 2 * displayAreaPadding;
+                                if (isNaN(displayAreaContentActualWidth) || displayAreaContentActualWidth <= 0 ) { statusMessage.textContent = "Lỗi: Vùng hiển thị không hợp lệ."; return;}
+
+                                let imgRatio = originalImageWidth / originalImageHeight;
+                                let newImgWidth = displayAreaContentActualWidth;
+                                let newImgHeight = newImgWidth / imgRatio;
+                                if (newImgHeight > displayAreaContentActualHeight) {
+                                    newImgHeight = displayAreaContentActualHeight;
+                                    newImgWidth = newImgHeight * imgRatio;
+                                }
+                                displayedImage.width = Math.round(newImgWidth);
+                                displayedImage.height = Math.round(newImgHeight);
+                                displayedImage.x = Math.round(displayAreaPadding + (displayAreaContentActualWidth - newImgWidth) / 2);
+                                displayedImage.y = Math.round(displayAreaPadding + (displayAreaContentActualHeight - newImgHeight) / 2);
+                                uploadedImage.style.width = `${displayedImage.width}px`;
+                                uploadedImage.style.height = `${displayedImage.height}px`;
+                                uploadedImage.style.left = `${displayedImage.x}px`;
+                                uploadedImage.style.top = `${displayedImage.y}px`;
+                                
+                                innerLinesHost.style.display = 'block'; 
+                                allOuterLines.forEach(line => line.style.display = 'block'); 
+                                allInnerLines.forEach(line => line.style.display = 'block'); 
+                                allDimmingOverlays.forEach(o => o.style.display = 'block');
+                                initializeOuterLines(); 
+                                cropButton.disabled = false;
+                                resetLinesButton.disabled = false; 
+                                statusMessage.textContent = 'Kéo thả các đường kẻ để căn chỉnh lưới.';
+                            } catch (error) { statusMessage.textContent = "Lỗi xử lý hiển thị ảnh."; console.error("Error in uploadedImage.onload:", error); }
+                        }
+                    }
+                    reader.onerror = () => { statusMessage.textContent = "Lỗi: Không thể đọc file.";};
+                    reader.readAsDataURL(file);
+                } else {  
+                    uploadedImage.style.display = 'none';
+                    innerLinesHost.style.display = 'none';
+                    allOuterLines.forEach(line => line.style.display = 'none');
+                    allInnerLines.forEach(line => line.style.display = 'none');
+                    allDimmingOverlays.forEach(o => o.style.display = 'none');
+                    cropButton.disabled = true;
+                    resetLinesButton.disabled = true;
+                    statusMessage.textContent = 'Vui lòng chọn ảnh để bắt đầu.';
+                }
+            });
+            
+            resetLinesButton.addEventListener('click', () => {
+                 if (originalImageWidth > 0) { 
+                    initializeOuterLines(); 
+                    statusMessage.textContent = "Đã reset vị trí các đường kẻ.";
+                }
+            });
+
+            function initializeOuterLines() { 
+                const outerLineThickness = 7; 
+                if (displayedImage.width <= 0 || displayedImage.height <= 0) { return; }
+
+                // Mở rộng ra ngoài displayedImage by INITIAL_OUTER_EXPANSION
+                const expandedX = displayedImage.x - INITIAL_OUTER_EXPANSION;
+                const expandedY = displayedImage.y - INITIAL_OUTER_EXPANSION;
+                const expandedWidth = displayedImage.width + (2 * INITIAL_OUTER_EXPANSION);
+                const expandedHeight = displayedImage.height + (2 * INITIAL_OUTER_EXPANSION);
+
+                outerLineTop.style.left = `${expandedX}px`;
+                outerLineTop.style.top = `${expandedY}px`;
+                outerLineTop.style.width = `${expandedWidth}px`;
+
+                outerLineBottom.style.left = `${expandedX}px`;
+                outerLineBottom.style.top = `${expandedY + expandedHeight - outerLineThickness}px`;
+                outerLineBottom.style.width = `${expandedWidth}px`;
+
+                outerLineLeft.style.top = `${expandedY}px`;
+                outerLineLeft.style.left = `${expandedX}px`;
+                outerLineLeft.style.height = `${expandedHeight}px`;
+
+                outerLineRight.style.top = `${expandedY}px`;
+                outerLineRight.style.left = `${expandedX + expandedWidth - outerLineThickness}px`;
+                outerLineRight.style.height = `${expandedHeight}px`;
+                
+                updateInnerLinesHostBounds(); 
+            }
+            
+            function updateInnerLinesHostBounds() { 
+                const olTopPos = outerLineTop.offsetTop;
+                const olLeftPos = outerLineLeft.offsetLeft;
+                const olBottomPos = outerLineBottom.offsetTop; 
+                const olRightPos = outerLineRight.offsetLeft; 
+                const olTopH = outerLineTop.offsetHeight;
+                const olLeftW = outerLineLeft.offsetWidth;
+                const hostX = olLeftPos + olLeftW;
+                const hostY = olTopPos + olTopH;
+                const hostWidth = Math.max(0, olRightPos - hostX);
+                const hostHeight = Math.max(0, olBottomPos - hostY);
+                innerLinesHost.style.left = `${hostX}px`;
+                innerLinesHost.style.top = `${hostY}px`;
+                innerLinesHost.style.width = `${hostWidth}px`;
+                innerLinesHost.style.height = `${hostHeight}px`;
+                initializeInnerLines(); 
+                updateDimmingOverlays(); 
+            }
+
+             function updateDimmingOverlays() { 
+                if (!uploadedImage.src || uploadedImage.src.endsWith('#') || displayedImage.width === 0) {
+                    allDimmingOverlays.forEach(o => o.style.display = 'none'); return;
+                }
+                allDimmingOverlays.forEach(o => o.style.display = 'block');
+                const imgX = displayedImage.x; const imgY = displayedImage.y;
+                const imgW = displayedImage.width; const imgH = displayedImage.height;
+                const hostX = innerLinesHost.offsetLeft; const hostY = innerLinesHost.offsetTop;
+                const hostW = innerLinesHost.offsetWidth; const hostH = innerLinesHost.offsetHeight;
+                dimTop.style.top = `${imgY}px`; dimTop.style.left = `${imgX}px`;
+                dimTop.style.width = `${imgW}px`; dimTop.style.height = `${Math.max(0, hostY - imgY)}px`;
+                dimBottom.style.top = `${hostY + hostH}px`; dimBottom.style.left = `${imgX}px`;
+                dimBottom.style.width = `${imgW}px`; dimBottom.style.height = `${Math.max(0, (imgY + imgH) - (hostY + hostH))}px`;
+                dimLeft.style.top = `${hostY}px`; dimLeft.style.left = `${imgX}px`;
+                dimLeft.style.width = `${Math.max(0, hostX - imgX)}px`; dimLeft.style.height = `${hostH}px`;
+                dimRight.style.top = `${hostY}px`; dimRight.style.left = `${hostX + hostW}px`;
+                dimRight.style.width = `${Math.max(0, (imgX + imgW) - (hostX + hostW))}px`; dimRight.style.height = `${hostH}px`;
+            }
+
+
+            function initializeInnerLines() { 
+                const hostWidth = innerLinesHost.offsetWidth;
+                const hostHeight = innerLinesHost.offsetHeight;
+                if(hostWidth <=0 || hostHeight <=0) { 
+                    allInnerLines.forEach(l => l.style.display = 'none'); return;
+                }
+                allInnerLines.forEach(l => l.style.display = 'block');
+                hLines[0].style.top = `${Math.round(hostHeight * 0.25)}px`;
+                hLines[1].style.top = `${Math.round(hostHeight * 0.50)}px`;
+                hLines[2].style.top = `${Math.round(hostHeight * 0.75)}px`;
+                vLines[0].style.left = `${Math.round(hostWidth * 0.25)}px`;
+                vLines[1].style.left = `${Math.round(hostWidth * 0.50)}px`;
+                vLines[2].style.left = `${Math.round(hostWidth * 0.75)}px`;
+            }
+            
+            allInnerLines.forEach(line => { makeInnerLineDraggable(line); });
+            allOuterLines.forEach(line => { makeOuterLineDraggable(line); });
+
+            function makeOuterLineDraggable(lineElement) {  
+                 let isDragging = false;
+                let initialMouseX, initialMouseY, initialTop, initialLeft;
+                const lineThicknessH = 7; 
+                const lineThicknessV = 7; 
+                lineElement.addEventListener('mousedown', (e) => {
+                    e.preventDefault(); isDragging = true; initialMouseX = e.clientX; initialMouseY = e.clientY;
+                    initialTop = lineElement.offsetTop; initialLeft = lineElement.offsetLeft;
+                    document.addEventListener('mousemove', onMouseMoveOuter); document.addEventListener('mouseup', onMouseUpOuter);
+                });
+                function onMouseMoveOuter(e) {
+                    if (!isDragging) return;
+                    const dx = e.clientX - initialMouseX; const dy = e.clientY - initialMouseY;
+                    const displayAreaPadding = parseFloat(getComputedStyle(imageDisplayArea).paddingTop) || 0;
+                    const minCoord = 0; // Giới hạn trong imageDisplayArea (bao gồm padding của nó)
+                    const maxOuterWidthLimit = imageDisplayArea.offsetWidth ;
+                    const maxOuterHeightLimit = imageDisplayArea.offsetHeight ;
+
+                    if (lineElement.id === 'outerLineTop') {
+                        let newTop = initialTop + dy;
+                        newTop = Math.max(minCoord, Math.min(newTop, outerLineBottom.offsetTop - lineThicknessH));
+                        lineElement.style.top = `${newTop}px`;
+                    } else if (lineElement.id === 'outerLineBottom') {
+                        let newTop = initialTop + dy;
+                        newTop = Math.max(outerLineTop.offsetTop + outerLineTop.offsetHeight, Math.min(newTop, maxOuterHeightLimit - lineThicknessH));
+                        lineElement.style.top = `${newTop}px`;
+                    } else if (lineElement.id === 'outerLineLeft') {
+                        let newLeft = initialLeft + dx;
+                        newLeft = Math.max(minCoord, Math.min(newLeft, outerLineRight.offsetLeft - lineThicknessV));
+                        lineElement.style.left = `${newLeft}px`;
+                    } else if (lineElement.id === 'outerLineRight') {
+                        let newLeft = initialLeft + dx;
+                        newLeft = Math.max(outerLineLeft.offsetLeft + outerLineLeft.offsetWidth, Math.min(newLeft, maxOuterWidthLimit - lineThicknessV));
+                        lineElement.style.left = `${newLeft}px`;
+                    }
+                    const topY = outerLineTop.offsetTop; const bottomYBase = outerLineBottom.offsetTop; 
+                    const leftX = outerLineLeft.offsetLeft; const rightXBase = outerLineRight.offsetLeft; 
+                    outerLineTop.style.left = `${leftX}px`; outerLineTop.style.width = `${rightXBase + lineThicknessV - leftX}px`;
+                    outerLineBottom.style.left = `${leftX}px`; outerLineBottom.style.width = `${rightXBase + lineThicknessV - leftX}px`;
+                    outerLineLeft.style.top = `${topY}px`; outerLineLeft.style.height = `${bottomYBase + lineThicknessH - topY}px`;
+                    outerLineRight.style.top = `${topY}px`; outerLineRight.style.height = `${bottomYBase + lineThicknessH - topY}px`;
+                    updateInnerLinesHostBounds();
+                }
+                function onMouseUpOuter() {
+                    if (!isDragging) return; isDragging = false;
+                    document.removeEventListener('mousemove', onMouseMoveOuter); document.removeEventListener('mouseup', onMouseUpOuter);
+                }
+            }
+            function makeInnerLineDraggable(lineElement) { 
+                let isDragging = false; let initialMouseX, initialMouseY; 
+                lineElement.addEventListener('mousedown', (e) => {
+                    e.preventDefault(); e.stopPropagation(); isDragging = true;
+                    initialMouseX = e.clientX; initialMouseY = e.clientY;
+                    document.addEventListener('mousemove', onMouseMoveInner); document.addEventListener('mouseup', onMouseUpInner);
+                });
+                function onMouseMoveInner(e) {
+                    if (!isDragging) return; e.stopPropagation();
+                    const hostRect = innerLinesHost.getBoundingClientRect();
+                    const mouseXInHost = e.clientX - hostRect.left; const mouseYInHost = e.clientY - hostRect.top;
+                    const hostWidth = innerLinesHost.offsetWidth; const hostHeight = innerLinesHost.offsetHeight;
+                    if(hostWidth <=0 || hostHeight <=0) return; 
+                    const lineThickness = parseInt(getComputedStyle(lineElement).getPropertyValue(lineElement.classList.contains('horizontal') ? 'height' : 'width')) || 3;
+                    if (lineElement.classList.contains('horizontal')) {
+                        let newTop = mouseYInHost - Math.round(lineThickness / 2);
+                        newTop = Math.max(0, Math.min(newTop, hostHeight - lineThickness));
+                        const currentIndex = hLines.indexOf(lineElement); const prevLine = hLines[currentIndex - 1]; const nextLine = hLines[currentIndex + 1];
+                        if (nextLine && newTop >= nextLine.offsetTop - lineThickness) newTop = nextLine.offsetTop - lineThickness - 0.1; 
+                        if (prevLine && newTop <= prevLine.offsetTop + prevLine.offsetHeight) newTop = prevLine.offsetTop + prevLine.offsetHeight + 0.1;
+                        lineElement.style.top = `${newTop}px`;
+                    } else if (lineElement.classList.contains('vertical')) {
+                        let newLeft = mouseXInHost - Math.round(lineThickness / 2);
+                        newLeft = Math.max(0, Math.min(newLeft, hostWidth - lineThickness));
+                        const currentIndex = vLines.indexOf(lineElement); const prevLine = vLines[currentIndex - 1]; const nextLine = vLines[currentIndex + 1];
+                        if (nextLine && newLeft >= nextLine.offsetLeft - lineThickness) newLeft = nextLine.offsetLeft - lineThickness - 0.1;
+                        if (prevLine && newLeft <= prevLine.offsetLeft + prevLine.offsetWidth) newLeft = prevLine.offsetLeft + prevLine.offsetWidth + 0.1;
+                        lineElement.style.left = `${newLeft}px`;
+                    }
+                }
+                function onMouseUpInner() {
+                    if (!isDragging) return; isDragging = false;
+                    document.removeEventListener('mousemove', onMouseMoveInner); document.removeEventListener('mouseup', onMouseUpInner);
+                }
+            }
+
+            cropButton.addEventListener('click', () => {
+                statusMessage.textContent = 'Đang chuẩn bị cắt ảnh...';
+                if (displayedImage.width === 0 || displayedImage.height === 0 || !originalImageWidth) {
+                    statusMessage.textContent = "Lỗi: Chưa có ảnh hoặc kích thước ảnh không hợp lệ."; return;
+                }
+                const currentPadding = PADDING_PIXELS_CROP;
+                const scaleX = originalImageWidth / displayedImage.width; 
+                const scaleY = originalImageHeight / displayedImage.height;
+                const hostDisplayX = innerLinesHost.offsetLeft; 
+                const hostDisplayY = innerLinesHost.offsetTop;  
+                const hostDisplayWidth = innerLinesHost.offsetWidth;
+                const hostDisplayHeight = innerLinesHost.offsetHeight;
+                const hostRelToImageX_display = hostDisplayX - displayedImage.x;
+                const hostRelToImageY_display = hostDisplayY - displayedImage.y;
+                const activeAreaX_orig = hostRelToImageX_display * scaleX;
+                const activeAreaY_orig = hostRelToImageY_display * scaleY;
+                const activeAreaWidth_orig = hostDisplayWidth * scaleX;
+                const activeAreaHeight_orig = hostDisplayHeight * scaleY;
+
+                if (activeAreaWidth_orig < 1 || activeAreaHeight_orig < 1) {
+                    statusMessage.textContent = "Lỗi: Vùng cắt chính bạn chọn quá nhỏ."; return;
+                }
+                
+                const hLineOffsets_inner_display = hLines.map(line => line.offsetTop); 
+                const vLineOffsets_inner_display = vLines.map(line => line.offsetLeft);
+                const scaleY_inner = (hostDisplayHeight > 0) ? (activeAreaHeight_orig / hostDisplayHeight) : 0;
+                const scaleX_inner = (hostDisplayWidth > 0) ? (activeAreaWidth_orig / hostDisplayWidth) : 0;
+                const inner_hLinePositionsOrig = hLineOffsets_inner_display.map(offset => offset * scaleY_inner);
+                const inner_vLinePositionsOrig = vLineOffsets_inner_display.map(offset => offset * scaleX_inner);
+                const xBoundaries_inner_orig = [0, ...inner_vLinePositionsOrig, activeAreaWidth_orig].sort((a,b)=>a-b);
+                const yBoundaries_inner_orig = [0, ...inner_hLinePositionsOrig, activeAreaHeight_orig].sort((a,b)=>a-b);
+                
+                downloadQueue = []; 
+                currentDownloadIndex = 0;
+                successfulDownloadsCount = 0;
+
+                const cropDefinitions = [ 
+                    { name: 'minh_duong', isMinhDuong: true },
+                    { name: 'cung_ti',    r: 0, c: 0 }, { name: 'cung_ngo',   r: 0, c: 1 }, { name: 'cung_mui', r: 0, c: 2 }, { name: 'cung_than', r: 0, c: 3 },
+                    { name: 'cung_thin',  r: 1, c: 0 }, { name: 'cung_dau',   r: 1, c: 3 },
+                    { name: 'cung_mao',   r: 2, c: 0 }, { name: 'cung_tuat',  r: 2, c: 3 },
+                    { name: 'cung_dan',   r: 3, c: 0 }, { name: 'cung_suu',   r: 3, c: 1 }, { name: 'cung_ty_chuot',  r: 3, c: 2 }, { name: 'cung_hoi',  r: 3, c: 3 }
+                ];
+                
+                cropDefinitions.forEach(def => {
+                    let sx_inner_no_pad, sy_inner_no_pad, sWidth_inner_no_pad, sHeight_inner_no_pad;
+                    if (def.isMinhDuong) {
+                        if (xBoundaries_inner_orig.length < 4 || yBoundaries_inner_orig.length < 4) {return; }
+                        sx_inner_no_pad = xBoundaries_inner_orig[1];
+                        sy_inner_no_pad = yBoundaries_inner_orig[1];
+                        sWidth_inner_no_pad = xBoundaries_inner_orig[3] - xBoundaries_inner_orig[1];
+                        sHeight_inner_no_pad = yBoundaries_inner_orig[3] - yBoundaries_inner_orig[1];
+                    } else {
+                        if (def.c + 1 >= xBoundaries_inner_orig.length || def.r + 1 >= yBoundaries_inner_orig.length) { return; }
+                        sx_inner_no_pad = xBoundaries_inner_orig[def.c];
+                        sy_inner_no_pad = yBoundaries_inner_orig[def.r];
+                        sWidth_inner_no_pad = xBoundaries_inner_orig[def.c + 1] - sx_inner_no_pad;
+                        sHeight_inner_no_pad = yBoundaries_inner_orig[def.r + 1] - sy_inner_no_pad;
+                    }
+                    const padded_sWidth_for_canvas = sWidth_inner_no_pad + (2 * currentPadding);
+                    const padded_sHeight_for_canvas = sHeight_inner_no_pad + (2 * currentPadding);
+                    const padded_sx_within_active = sx_inner_no_pad - currentPadding;
+                    const padded_sy_within_active = sy_inner_no_pad - currentPadding;
+                    const final_draw_sx = activeAreaX_orig + padded_sx_within_active;
+                    const final_draw_sy = activeAreaY_orig + padded_sy_within_active;
+                    if (padded_sWidth_for_canvas >= 1 && padded_sHeight_for_canvas >= 1) {
+                        downloadQueue.push({ 
+                            filename: `${def.name}.png`, sx: final_draw_sx, sy: final_draw_sy, 
+                            sWidth: padded_sWidth_for_canvas, sHeight: padded_sHeight_for_canvas
+                        });
+                    }
+                });
+                if (downloadQueue.length > 0) { processNextDownload(); } 
+                else { statusMessage.textContent = "Không có vùng nào hợp lệ để cắt."; }
+            });
+            
+            function processNextDownload() { 
+                if (currentDownloadIndex >= downloadQueue.length) {
+                    setTimeout(() => {
+                        let finalMessage = `Hoàn tất! ${successfulDownloadsCount} / ${downloadQueue.length} ảnh đã được xử lý.`;
+                        statusMessage.textContent = finalMessage;
+                    }, DOWNLOAD_DELAY_MS);
+                    return;
+                }
+                const item = downloadQueue[currentDownloadIndex];
+                statusMessage.textContent = `Đang xử lý ${item.filename} (${currentDownloadIndex + 1}/${downloadQueue.length})...`;
+                if (cropAndDownload(item.sx, item.sy, item.sWidth, item.sHeight, item.filename)) {
+                    successfulDownloadsCount++;
+                }
+                currentDownloadIndex++;
+                setTimeout(processNextDownload, DOWNLOAD_DELAY_MS);
+            }
+
+            function cropAndDownload(sx, sy, sWidth, sHeight, filename) { 
+                const tempCanvas = document.createElement('canvas');
+                const canvasWidth = Math.max(1, Math.ceil(sWidth));
+                const canvasHeight = Math.max(1, Math.ceil(sHeight));
+                tempCanvas.width = canvasWidth; tempCanvas.height = canvasHeight;
+                const ctx = tempCanvas.getContext('2d');
+                let dataUrl = "";
+                try {
+                    ctx.drawImage(uploadedImage, sx, sy, sWidth, sHeight, 0, 0, canvasWidth, canvasHeight);
+                    dataUrl = tempCanvas.toDataURL('image/png');
+                    if (!dataUrl || dataUrl === "data:," || dataUrl.length < 100) { return false; }
+                    const link = document.createElement('a');
+                    link.href = dataUrl; link.download = filename;
+                    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                    return true;
+                } catch (e) { console.error(`Lỗi khi cropAndDownload ${filename}:`, e); return false;}
+            }
+        });
+    </script>
+</body>
+</html>
