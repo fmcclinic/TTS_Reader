@@ -642,19 +642,39 @@
 
     // --- HÀM processText ĐƯỢC SỬ DỤNG BỞI extractContent (phiên bản gốc của file) ---
     function processText(text) {
-        text = text.replace(/\u00A0/g, ' '); // Thay thế non-breaking space
+    // --- BƯỚC 1: Dọn dẹp triệt để các ký tự rác ---
+    
+    // Giữ lại: chữ cái (bao gồm tiếng Việt), số, và các dấu câu cơ bản.
+    // Loại bỏ: tất cả các ký tự không mong muốn khác.
+    // Regex này sẽ tìm bất cứ ký tự nào KHÔNG PHẢI là:
+    // a-zA-Z0-9 -> chữ và số
+    // \s -> khoảng trắng, tab, xuống dòng
+    // àáâã... -> toàn bộ ký tự có dấu tiếng Việt
+    // ,.?!:;…()“”‘’-–— -> các dấu câu và ngoặc thông dụng
+    const cleanedText = text.replace(/[^a-zA-Z0-9\sàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ,.?!:;…()“”‘’-–—]/g, '');
 
-        text = text.replace(/\r\n/g, '\n'); 
-        text = text.replace(/[ \t]*\n[ \t]*/g, '\n'); 
-        text = text.replace(/\n{3,}/g, '\n\n'); 
-        text = text.replace(/(?<![\.\?\!"”\)\]\}…])\s*\n(?!\s*[-–—"“‘\(\[\{A-Z0-9\d])/g, ' '); 
-        text = text.replace(/([\.!\?…])([ \t]*)(?![\n"”’\)\]\}])/g, '$1\n');
-        text = text.replace(/^\s*([-–—])\s*/gm, '\n$1 '); 
-        text = text.replace(/([-–—])([^\s])/g, '$1 $2');
-        
-        text = text.trim();
-        return text;
-    }
+    // --- BƯỚC 2: Chuẩn hóa lại định dạng văn bản sau khi đã dọn dẹp ---
+    let newText = cleanedText;
+
+    newText = newText.replace(/\u00A0/g, ' '); // Thay thế non-breaking space
+    newText = newText.replace(/\r\n/g, '\n');  // Chuẩn hóa xuống dòng
+    newText = newText.replace(/[ \t]+/g, ' '); // Xóa khoảng trắng/tab thừa
+    
+    // Gộp các dòng bị ngắt quãng không phải cuối câu
+    newText = newText.replace(/(?<![\.\?\!"”\)\]\}…])\s*\n(?!\s*[-–—"“‘\(\[\{A-Z0-9\d])/g, ' '); 
+    
+    // Đảm bảo xuống dòng sau dấu chấm câu
+    newText = newText.replace(/([\.!\?…“”])([ \t]*)(?![\n"”’\)\]\}])/g, '$1\n');
+    
+    // Xử lý dấu gạch đầu dòng cho hội thoại
+    newText = newText.replace(/^\s*([-–—])\s*/gm, '\n$1 '); 
+    newText = newText.replace(/([-–—])([^\s])/g, '$1 $2');
+    
+    // Loại bỏ các dòng trắng thừa, chỉ giữ lại tối đa 1 dòng trắng giữa các đoạn
+    newText = newText.replace(/\n{3,}/g, '\n\n'); 
+
+    return newText.trim();
+}
 
     // Thay thế toàn bộ hàm extractContent cũ bằng hàm mới này
 
