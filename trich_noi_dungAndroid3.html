@@ -656,8 +656,9 @@
         return text;
     }
 
-    // --- HÀM extractContent ĐÃ ĐƯỢC CẢI TIẾN ---
-    async function extractContent(html) {
+    // Thay thế toàn bộ hàm extractContent cũ bằng hàm mới này
+
+async function extractContent(html) {
         if (!html) return '';
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
@@ -699,7 +700,7 @@
             '.chapternav', '.nav-previous', '.nav-next', '.post-navigation',
             '*[class*="notice"]', '*[id*="notice"]',
             'p > a[target="_blank"] > img',
-            'span[style*="font-size:0px"]' // <--- ĐÃ THÊM VÀO ĐÂY
+            'span[style*="font-size:0px"]' 
         ];
         chapterContentElement.querySelectorAll(selectorsToRemove.join(', ')).forEach(el => el.remove());
 
@@ -710,7 +711,7 @@
         if (paragraphs.length > 10) {
             paragraphs.forEach(p => {
                 const pText = p.textContent.replace(/\s+/g, ' ').trim();
-                if (pText && !/truyện được (sưu tầm|cập nhật|đăng tải) tại/i.test(pText) && !/nguồn truyện:/i.test(pText) && !/đọc truyện tại/i.test(pText)) {
+                if (pText) {
                     rawContent += pText + '\n\n';
                 }
             });
@@ -735,7 +736,7 @@
         // 5. Chuẩn hóa khoảng trắng và xuống dòng cơ bản
         rawContent = rawContent.replace(/\r\n?/g, '\n');
         rawContent = rawContent.replace(/[ \t]+/g, ' ');
-        rawContent = rawContent.replace(/\n[ \t\n]*\n/g, '\n\n');
+        rawContent = rawContent.replace(/\n[ \t\n]*\n/g, '\n\n'); 
         rawContent = rawContent.trim();
 
         // 6. Lọc bỏ dòng không mong muốn bằng regex
@@ -753,7 +754,8 @@
             /^\s*Tìm kiếm nâng cao\s*$/i, /^\s*©.*copyright.*$/i, /^truyenfull\.vn$/i,
             /^\s*đọc truyện online.*truyện chữ.*truyện hay.*$/i,
             /Nếu bạn thấy truyện hay hãy mua ủng hộ tác giả nếu có điều kiện nhé/i,
-            /Mọi ý kiến đóng góp xin vui lòng liên hệ qua email/i
+            /Mọi ý kiến đóng góp xin vui lòng liên hệ qua email/i,
+            /^\s*\.\s*$/ // <-- THÊM DÒNG NÀY: Xóa dòng chỉ có dấu chấm
         ];
 
         let lines = rawContent.split('\n');
