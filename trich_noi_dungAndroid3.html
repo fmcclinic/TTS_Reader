@@ -563,7 +563,7 @@
         },
         {
             name: 'codetabs',
-            build: u => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u),
+            build: u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
             parse: r => r.text()
         },
         {
@@ -598,6 +598,16 @@
         throw new Error('Tất cả proxy CORS đều thất bại. ' + (lastError ? lastError.message : ''));
     }
 
+    // Làm sạch URL người dùng nhập: bỏ khoảng trắng, gộp scheme bị lặp
+    // (vd "https://https://x" -> "https://x"), thêm "https://" nếu thiếu.
+    function normalizeUrl(u) {
+        let url = (u || '').trim();
+        if (!url) return url;
+        url = url.replace(/^(?:https?:\/\/)+(?=https?:\/\/)/i, '');
+        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+        return url;
+    }
+
     async function fetchMultipleUrls() {
         // console.log("fetchMultipleUrls được gọi");
         const urlsText = document.getElementById('urls').value;
@@ -629,7 +639,7 @@
         let failCount = 0;
         
         for (let i = 0; i < urls.length; i++) {
-            const currentUrl = urls[i].trim();
+            const currentUrl = normalizeUrl(urls[i]);
             const progress = ((i + 1) / urls.length) * 100;
             
             // console.log(`Thanh tiến trình: URL ${i+1}, progress ${progress}%`);
