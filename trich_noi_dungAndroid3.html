@@ -547,8 +547,59 @@
         }
     }
     
+    // ===== Danh sách proxy CORS dự phòng =====
+    // Mỗi proxy bọc URL đích theo kiểu riêng và trả về HTML thô.
+    // Khi một proxy chết / bị giới hạn, code sẽ tự nhảy sang proxy kế tiếp.
+    const CORS_PROXIES = [
+        {
+            name: 'cors.eu.org',
+            build: u => 'https://cors.eu.org/' + u,
+            parse: r => r.text()
+        },
+        {
+            name: 'allorigins/raw',
+            build: u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+            parse: r => r.text()
+        },
+        {
+            name: 'codetabs',
+            build: u => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u),
+            parse: r => r.text()
+        },
+        {
+            name: 'allorigins/get',
+            build: u => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u),
+            parse: async r => {
+                const data = await r.json();
+                const html = data && data.contents;
+                if (!html || typeof html !== 'string') throw new Error('proxy không trả nội dung');
+                if (html.includes('Rate limit exceeded') || html.includes('Too Many Requests'))
+                    throw new Error('trang đích bị giới hạn (rate limit)');
+                return html;
+            }
+        }
+    ];
+
+    // Thử lần lượt từng proxy cho tới khi lấy được HTML hợp lệ; hết proxy thì ném lỗi.
+    async function fetchHtmlViaProxy(targetUrl) {
+        let lastError;
+        for (const proxy of CORS_PROXIES) {
+            try {
+                const resp = await fetch(proxy.build(targetUrl));
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const html = await proxy.parse(resp);
+                if (!html || html.length < 500) throw new Error('nội dung rỗng/quá ngắn');
+                return html;
+            } catch (e) {
+                lastError = e;
+                console.warn(`Proxy "${proxy.name}" thất bại cho ${targetUrl}: ${e.message}. Thử proxy khác...`);
+            }
+        }
+        throw new Error('Tất cả proxy CORS đều thất bại. ' + (lastError ? lastError.message : ''));
+    }
+
     async function fetchMultipleUrls() {
-        // console.log("fetchMultipleUrls được gọi"); 
+        // console.log("fetchMultipleUrls được gọi");
         const urlsText = document.getElementById('urls').value;
         const urls = urlsText.split('\n').filter(url => url.trim());
 
@@ -586,40 +637,15 @@
             progressText.textContent = `Đang xử lý URL ${i + 1}/${urls.length}`;
 
             try {
-                const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(currentUrl);
-                const response = await fetch(proxyUrl);
-                if (!response.ok) {
-                    let errorMsg = `Lỗi mạng khi fetch URL (${response.status})`;
-                    try {
-                        const errorData = await response.json();
-                        if (errorData && errorData.contents) {
-                            errorMsg = `Lỗi từ proxy (${response.status}): ${errorData.contents}`;
-                        } else if (errorData && errorData.error) {
-                            errorMsg = `Lỗi từ proxy (${response.status}): ${errorData.error}`;
-                        }
-                    } catch (e) { /* Bỏ qua lỗi parse json */ }
-                    throw new Error(errorMsg);
-                }
-
-                const data = await response.json();
-                if (data.contents && !data.contents.includes("Rate limit exceeded") && !data.contents.includes("Too Many Requests")) {
-                    // Gọi hàm extractContent đã được cải tiến
-                    const content = await extractContent(data.contents); 
-                    if (content) {
-                        allContent += content + '\n\n'; 
-                        successCount++;
-                        addToHistory(currentUrl); 
-                    } else {
-                        failCount++;
-                    }
+                // Lấy HTML qua danh sách proxy CORS dự phòng: proxy nào chết thì tự thử proxy kế tiếp.
+                const html = await fetchHtmlViaProxy(currentUrl);
+                const content = await extractContent(html);
+                if (content) {
+                    allContent += content + '\n\n';
+                    successCount++;
+                    addToHistory(currentUrl);
                 } else {
-                    let reason = 'Proxy không trả về nội dung HTML';
-                    if (data.contents && (data.contents.includes("Rate limit exceeded") || data.contents.includes("Too Many Requests"))) {
-                        reason = 'Trang đích chặn do quá nhiều yêu cầu (Rate limit)';
-                    } else if (data.status && data.status.http_code && data.status.http_code !== 200) {
-                        reason = `Trang đích trả về lỗi HTTP ${data.status.http_code}`;
-                    }
-                    console.warn(`Không lấy được nội dung từ ${currentUrl}. Lý do: ${reason}. Full response:`, data);
+                    console.warn(`Không trích được nội dung từ ${currentUrl} (HTML lấy về nhưng không khớp selector).`);
                     failCount++;
                 }
             } catch (error) {
